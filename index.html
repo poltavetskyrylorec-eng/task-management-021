@@ -685,29 +685,30 @@ function renderBucket(elId, list, type) {
     el.innerHTML = `<div class="empty-state">Немає задач у цій категорії</div>`;
     return;
   }
-  // Групуємо: батьківські задачі + їх підзадачі
-  const parents = list.filter(t => !t.parentId);
   const childrenMap = {};
-  list.filter(t => t.parentId).forEach(t => {
-    if (!childrenMap[t.parentId]) childrenMap[t.parentId] = [];
-    childrenMap[t.parentId].push(t);
+  list.forEach(t => {
+    const pid = t.parentId || null;
+    if (pid) {
+      if (!childrenMap[pid]) childrenMap[pid] = [];
+      childrenMap[pid].push(t);
+    }
   });
+  const roots = list.filter(t => !t.parentId);
 
-  function taskCard(t, isChild) {
+  function taskCard(t, depth) {
     const done = t.status === 'closed';
     const dueClass = type==='overdue'?'overdue':type==='today'?'today':'upcoming';
     const priTag = (t.priority==='high'||t.priority==='urgent') ? `<span class="tag hi">${PRI_TAG[t.priority]}</span>` : '';
+    const indent = depth > 0 ? `margin-left:${depth*24}px;border-left:2px solid var(--border);` : '';
+    const prefix = depth === 1 ? '↳ ' : depth >= 2 ? '↳↳ ' : '';
+    const children = childrenMap[t.id] || [];
     return `
-      <div class="tcard ${dueClass} ${done?'done':''} ${isChild?'is-subtask':''}"
-           id="card-${t.id}" data-min="${t.mins}" data-status="${t.status}" data-bucket="${t.bucket}"
-           style="${isChild?'margin-left:28px;border-left:2px solid var(--border);':''}">
+      <div class="tcard ${dueClass} ${done?'done':''}" id="card-${t.id}" data-min="${t.mins}" data-status="${t.status}" data-bucket="${t.bucket}" style="${indent}">
         <div class="tchk ${done?'checked':''}" onclick="toggleTask('${t.id}')">
           <svg class="chk-ico" width="9" height="9" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#07090E" stroke-width="2.2" stroke-linecap="round"/></svg>
         </div>
         <div class="t-body">
-          <div class="t-name" style="${isChild?'font-size:12px;':''}">
-            ${isChild?'↳ ':''}${t.name}
-          </div>
+          <div class="t-name" style="${depth>0?'font-size:12px;':''}">${prefix}${t.name}</div>
           <div class="t-meta">
             <span class="tag ${dueClass}">${t.dueLabel}</span>
             ${priTag}
@@ -716,8 +717,12 @@ function renderBucket(elId, list, type) {
           </div>
         </div>
         <div class="t-acts"><a class="t-btn" href="${t.url}" target="_blank" title="ClickUp">↗</a></div>
-      </div>`;
+      </div>
+      ${children.map(c => taskCard(c, depth+1)).join('')}`;
   }
+
+  el.innerHTML = roots.map(t => taskCard(t, 0)).join('');
+}
 
   el.innerHTML = parents.map(t => {
     const children = childrenMap[t.id] || [];
