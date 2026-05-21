@@ -506,13 +506,15 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
 
 <script>
 // ════════════════════════════════════════════
-// CONFIG — встав свої n8n webhook URLs
+// CONFIG — пряма інтеграція з ClickUp (без n8n для задач)
 // ════════════════════════════════════════════
+const CLICKUP_TOKEN = 'pk_266462192_L1K3UEICU6N2DUGSY7HWFP90YMJAPX46';
+const CLICKUP_SPACE_ID = '90158754708'; // спейс Маркетинг
+const CLICKUP_ASSIGNEE = '266462192';   // Кирило
+
+// n8n залишається тільки для місячної аналітики з Google Sheets
 const N8N = {
-  getTasks:  'https://dabudai.app.n8n.cloud/webhook/dabudai-tasks',     // GET  → задачі Кирила зі спейсу Маркетинг
-  complete:  'https://dabudai.app.n8n.cloud/webhook/dabudai-complete',  // POST → закрити в ClickUp + лог у Sheets
-  week:      'https://dabudai.app.n8n.cloud/webhook/dabudai-week',      // GET  → дані тижня
-  month:     'https://dabudai.app.n8n.cloud/webhook/dabudai-month'      // GET  → дані місяця з Sheets
+  month: 'https://dabudai.app.n8n.cloud/webhook/dabudai-month'
 };
 const USE_MOCK = false;
 
@@ -562,8 +564,63 @@ function mockTasks() {
 }
 
 // ════════════════════════════════════════════
-// FETCH TASKS
+// FETCH TASKS — прямо з ClickUp API
 // ════════════════════════════════════════════
+async function cuFetch(path, opts) {
+  const res = await fetch('https://api.clickup.com/api/v2' + path, {
+    ...(opts || {}),
+    headers: { 'Authorization': CLICKUP_TOKEN, 'Content-Type': 'application/json', ...((opts||{}).headers||{}) }
+  });
+  if (!res.ok) throw new Error('ClickUp ' + res.status);
+  return res.json();
+}
+
+// Нормалізація задачі ClickUp → формат TASKS
+function normalizeTask(t) {
+  const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  const todayEnd   = new Date(); todayEnd.setHours(23,59,59,999);
+  const upcomingEnd = new Date(todayEnd); upcomingEnd.setDate(upcomingEnd.getDate()+3);
+  const PRI_MAP = { 1:'urgent', 2:'high', 3:'normal', 4:'low' };
+
+  const isClosed = t.status && t.status.type === 'closed';
+  const due = t.due_date ? parseInt(t.due_date) : null;
+
+  let bucket;
+  if (isClosed) {
+    bucket = (due && due >= todayStart.getTime() && due <= todayEnd.getTime()) ? 'today' : 'overdue';
+  } else if (!due) {
+    bucket = 'today';
+  } else if (due < todayStart.getTime()) {
+    bucket = 'overdue';
+  } else if (due <= todayEnd.getTime()) {
+    bucket = 'today';
+  } else if (due <= upcomingEnd.getTime()) {
+    bucket = 'upcoming';
+  } else {
+    return null; // надто далеко в майбутньому
+  }
+
+  let dueLabel = 'Без дедлайну';
+  if (due) {
+    const d = Math.round((due - todayStart.getTime()) / 86400000);
+    dueLabel = d < 0 ? d + ' дн.' : d === 0 ? 'Сьогодні' : d === 1 ? 'Завтра' : '+' + d + ' дн.';
+  }
+
+  const mins = t.time_estimate ? Math.round(parseInt(t.time_estimate) / 60000) : 30;
+
+  return {
+    id: t.id,
+    name: t.name,
+    status: isClosed ? 'closed' : 'open',
+    bucket,
+    priority: PRI_MAP[t.priority && t.priority.priority] || 'normal',
+    mins,
+    dueLabel,
+    url: t.url || ('https://app.clickup.com/t/' + t.id),
+    assignee: 'КП'
+  };
+}
+
 async function loadToday() {
   const ico = document.getElementById('sync-ico');
   ico.classList.add('spin');
@@ -574,15 +631,24 @@ async function loadToday() {
       await new Promise(r => setTimeout(r, 700));
       TASKS = mockTasks();
     } else {
-      const res = await fetch(N8N.getTasks);
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      TASKS = await res.json();
+      // Один запит зі спейсу Маркетинг (open + closed), з пагінацією
+      let page = 0, raw = [];
+      while (true) {
+        const data = await cuFetch(
+          `/space/${CLICKUP_SPACE_ID}/task?assignees[]=${CLICKUP_ASSIGNEE}&include_closed=true&subtasks=false&page=${page}`
+        );
+        const tasks = data.tasks || [];
+        raw = raw.concat(tasks);
+        if (tasks.length < 100) break;
+        page++;
+      }
+      TASKS = raw.map(normalizeTask).filter(Boolean);
     }
     renderTasks();
     hideBanner('today');
     document.getElementById('last-sync').textContent = 'Sync: ' + new Date().toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'});
   } catch (e) {
-    showBanner('today','err','Помилка завантаження з ClickUp: ' + e.message + '. Перевір n8n webhook.');
+    showBanner('today','err','Помилка завантаження з ClickUp: ' + e.message);
   } finally {
     ico.classList.remove('spin');
   }
@@ -654,15 +720,14 @@ async function toggleTask(id) {
 
   if (wasDone) { toast('↩','Відмічено як невиконане'); return; }
 
-  // send to n8n: closes ClickUp task + writes Sheets log
-  if (!USE_MOCK) {
+  // Закриваємо задачу прямо в ClickUp
+  if (!USE_MOCK && !String(id).startsWith('m') && !String(id).startsWith('td')) {
     try {
-      await fetch(N8N.complete, {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ taskId:id, name:task?.name, mins:task?.mins, date:isoToday() })
+      await cuFetch('/task/' + id, {
+        method: 'PUT',
+        body: JSON.stringify({ status: 'complete' })
       });
-      toast('✅','ClickUp + таблицю оновлено');
+      toast('✅','ClickUp оновлено');
     } catch(e) {
       toast('⚠️','Не вдалось оновити ClickUp: ' + e.message);
     }
