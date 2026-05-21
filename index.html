@@ -506,14 +506,10 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
 
 <script>
 // ════════════════════════════════════════════
-// CONFIG — пряма інтеграція з ClickUp (без n8n для задач)
+// CONFIG — задачі тягнуться з ClickUp ЧЕРЕЗ Apps Script
+// (токен ClickUp живе на бекенді Apps Script, не у фронті)
 // ════════════════════════════════════════════
-const CLICKUP_TOKEN = 'pk_266462192_L1K3UEICU6N2DUGSY7HWFP90YMJAPX46';
-const CLICKUP_SPACE_ID = '90158754708'; // спейс Маркетинг
-const CLICKUP_ASSIGNEE = '266462192';   // Кирило
-let CLICKUP_TEAM_ID = null;              // кешується при першому запиті
-
-// n8n залишається тільки для місячної аналітики з Google Sheets
+// Apps Script: getTasks (тільки мої задачі з ClickUp), logTask, closeTask, місячна аналітика
 const GS_URL = 'https://script.google.com/macros/s/AKfycbyiIwXa_WhiTJuobHeDFIiOonLmNTuSSwuL1pnITteqM6YRoWaSwy9ZwbLhnHmCb1Ms/exec';
 const N8N = {
   month: 'https://dabudai.app.n8n.cloud/webhook/dabudai-month'
@@ -566,26 +562,21 @@ function mockTasks() {
 }
 
 // ════════════════════════════════════════════
-// FETCH TASKS — прямо з ClickUp API
+// FETCH TASKS — через Apps Script (action=getTasks)
 // ════════════════════════════════════════════
-async function cuFetch(path, opts) {
-  const res = await fetch('https://api.clickup.com/api/v2' + path, {
-    ...(opts || {}),
-    headers: { 'Authorization': CLICKUP_TOKEN, 'Content-Type': 'application/json', ...((opts||{}).headers||{}) }
-  });
-  if (!res.ok) throw new Error('ClickUp ' + res.status);
-  return res.json();
-}
-
-// Нормалізація задачі ClickUp → формат TASKS
+// Нормалізація задачі: Apps Script віддає вже підготовлений формат
+// { id, parentId, name, statusType('open'|'closed'), dueMs|null, priority, mins, url }
 function normalizeTask(t) {
   const todayStart = new Date(); todayStart.setHours(0,0,0,0);
   const todayEnd   = new Date(); todayEnd.setHours(23,59,59,999);
   const upcomingEnd = new Date(todayEnd); upcomingEnd.setDate(upcomingEnd.getDate()+3);
-  const PRI_MAP = { 1:'urgent', 2:'high', 3:'normal', 4:'low' };
 
-  const isClosed = t.status && t.status.type === 'closed';
-  const due = t.due_date ? parseInt(t.due_date) : null;
+  const isClosed = t.statusType === 'closed';
+
+  // dueMs — число в мс або null. Захист від секунд на випадок старого формату.
+  let due = (t.dueMs === null || t.dueMs === undefined || t.dueMs === '') ? null : parseInt(t.dueMs, 10);
+  if (due !== null && !isNaN(due) && due > 0 && due < 1e12) due = due * 1000;
+  if (isNaN(due)) due = null;
 
   let bucket;
   if (isClosed) {
@@ -596,8 +587,6 @@ function normalizeTask(t) {
     bucket = 'overdue';
   } else if (due <= todayEnd.getTime()) {
     bucket = 'today';
-  } else if (due <= upcomingEnd.getTime()) {
-    bucket = 'upcoming';
   } else {
     bucket = 'upcoming';
   }
@@ -608,15 +597,15 @@ function normalizeTask(t) {
     dueLabel = d < 0 ? d + ' дн.' : d === 0 ? 'Сьогодні' : d === 1 ? 'Завтра' : '+' + d + ' дн.';
   }
 
-  const mins = t.time_estimate ? Math.round(parseInt(t.time_estimate) / 60000) : 30;
+  const mins = (t.mins && !isNaN(parseInt(t.mins,10))) ? parseInt(t.mins,10) : 30;
 
   return {
-    id: t.id,
-    parentId: t.parent || null,
+    id: String(t.id),
+    parentId: t.parentId ? String(t.parentId) : null,
     name: t.name,
     status: isClosed ? 'closed' : 'open',
     bucket,
-    priority: PRI_MAP[t.priority && t.priority.priority] || 'normal',
+    priority: t.priority || 'normal',
     mins,
     dueLabel,
     url: t.url || ('https://app.clickup.com/t/' + t.id),
@@ -649,67 +638,83 @@ async function loadToday() {
   }
 }
 
+const PRI_TAG = { urgent:'Терміново', high:'Високий', normal:'', low:'Низький' };
+
+// Глобальні мапи дерева (будуються один раз на рендер)
+let BY_ID = {};
+let CHILDREN = {};
+
 function renderTasks() {
-  const buckets = { overdue:[], today:[], upcoming:[] };
-  TASKS.forEach(t => { if(buckets[t.bucket]) buckets[t.bucket].push(t); });
+  // 1) індексуємо всі задачі за id
+  BY_ID = {};
+  CHILDREN = {};
+  TASKS.forEach(t => { BY_ID[t.id] = t; });
 
-  renderBucket('list-ov', buckets.overdue, 'overdue');
-  renderBucket('list-td', buckets.today,   'today');
-  renderBucket('list-up', buckets.upcoming,'upcoming');
+  // 2) будуємо мапу дітей. Якщо батька немає в наборі — задача стає коренем.
+  TASKS.forEach(t => {
+    const pid = t.parentId;
+    if (pid && BY_ID[pid]) {
+      (CHILDREN[pid] = CHILDREN[pid] || []).push(t);
+    }
+  });
 
-  document.getElementById('cnt-ov').textContent = buckets.overdue.length;
-  document.getElementById('cnt-td').textContent = buckets.today.length;
-  document.getElementById('cnt-up').textContent = buckets.upcoming.length;
-  document.getElementById('badge-ov').textContent = buckets.overdue.filter(t=>t.status!=='closed').length;
+  // 3) корені = задачі без батька (або з батьком поза набором)
+  const roots = TASKS.filter(t => !(t.parentId && BY_ID[t.parentId]));
+
+  // 4) корінь потрапляє у свій bucket разом з усім піддеревом
+  const rootBuckets = { overdue:[], today:[], upcoming:[] };
+  roots.forEach(t => { if (rootBuckets[t.bucket]) rootBuckets[t.bucket].push(t); });
+
+  renderBucket('list-ov', rootBuckets.overdue, 'overdue');
+  renderBucket('list-td', rootBuckets.today,   'today');
+  renderBucket('list-up', rootBuckets.upcoming,'upcoming');
+
+  // лічильники — рахуємо ВСІ задачі бакету (з підзадачами), не лише корені
+  const cnt = { overdue:0, today:0, upcoming:0 };
+  TASKS.forEach(t => { if (cnt[t.bucket] !== undefined) cnt[t.bucket]++; });
+  document.getElementById('cnt-ov').textContent = cnt.overdue;
+  document.getElementById('cnt-td').textContent = cnt.today;
+  document.getElementById('cnt-up').textContent = cnt.upcoming;
+
+  const badge = document.getElementById('badge-ov');
+  if (badge) badge.textContent = TASKS.filter(t => t.bucket==='overdue' && t.status!=='closed').length;
 
   updateAnalytics();
 }
 
-const PRI_TAG = { urgent:'Терміново', high:'Високий', normal:'', low:'Низький' };
+function taskCardHTML(t, depth) {
+  const done = t.status === 'closed';
+  const dueClass = t.bucket==='overdue'?'overdue':t.bucket==='today'?'today':'upcoming';
+  const priTag = (t.priority==='high'||t.priority==='urgent') ? `<span class="tag hi">${PRI_TAG[t.priority]}</span>` : '';
+  const indent = depth > 0 ? `margin-left:${depth*24}px;border-left:2px solid var(--border);` : '';
+  const prefix = depth === 1 ? '↳ ' : depth >= 2 ? '↳↳ ' : '';
+  const kids = (CHILDREN[t.id] || []).slice().sort((a,b)=>a.name.localeCompare(b.name,'uk'));
+  return `
+    <div class="tcard ${dueClass} ${done?'done':''}" id="card-${t.id}" data-min="${t.mins}" data-status="${t.status}" data-bucket="${t.bucket}" style="${indent}">
+      <div class="tchk ${done?'checked':''}" onclick="toggleTask('${t.id}')">
+        <svg class="chk-ico" width="9" height="9" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#07090E" stroke-width="2.2" stroke-linecap="round"/></svg>
+      </div>
+      <div class="t-body">
+        <div class="t-name" style="${depth>0?'font-size:12px;':''}">${prefix}${t.name}</div>
+        <div class="t-meta">
+          <span class="tag ${dueClass}">${t.dueLabel}</span>
+          ${priTag}
+          <span class="tag time">⏱ ${t.mins}хв</span>
+          <span class="tag clickup">ClickUp</span>
+        </div>
+      </div>
+      <div class="t-acts"><a class="t-btn" href="${t.url}" target="_blank" title="ClickUp">↗</a></div>
+    </div>
+    ${kids.map(c => taskCardHTML(c, depth+1)).join('')}`;
+}
 
-function renderBucket(elId, list, type) {
+function renderBucket(elId, rootList, type) {
   const el = document.getElementById(elId);
-  if (list.length === 0) {
+  if (!rootList || rootList.length === 0) {
     el.innerHTML = `<div class="empty-state">Немає задач у цій категорії</div>`;
     return;
   }
-  const childrenMap = {};
-  list.forEach(t => {
-    const pid = t.parentId || null;
-    if (pid) {
-      if (!childrenMap[pid]) childrenMap[pid] = [];
-      childrenMap[pid].push(t);
-    }
-  });
-  const roots = list.filter(t => !t.parentId);
-
-  function taskCard(t, depth) {
-    const done = t.status === 'closed';
-    const dueClass = type==='overdue'?'overdue':type==='today'?'today':'upcoming';
-    const priTag = (t.priority==='high'||t.priority==='urgent') ? `<span class="tag hi">${PRI_TAG[t.priority]}</span>` : '';
-    const indent = depth > 0 ? `margin-left:${depth*24}px;border-left:2px solid var(--border);` : '';
-    const prefix = depth === 1 ? '↳ ' : depth >= 2 ? '↳↳ ' : '';
-    const children = childrenMap[t.id] || [];
-    return `
-      <div class="tcard ${dueClass} ${done?'done':''}" id="card-${t.id}" data-min="${t.mins}" data-status="${t.status}" data-bucket="${t.bucket}" style="${indent}">
-        <div class="tchk ${done?'checked':''}" onclick="toggleTask('${t.id}')">
-          <svg class="chk-ico" width="9" height="9" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#07090E" stroke-width="2.2" stroke-linecap="round"/></svg>
-        </div>
-        <div class="t-body">
-          <div class="t-name" style="${depth>0?'font-size:12px;':''}">${prefix}${t.name}</div>
-          <div class="t-meta">
-            <span class="tag ${dueClass}">${t.dueLabel}</span>
-            ${priTag}
-            <span class="tag time">⏱ ${t.mins}хв</span>
-            <span class="tag clickup">ClickUp</span>
-          </div>
-        </div>
-        <div class="t-acts"><a class="t-btn" href="${t.url}" target="_blank" title="ClickUp">↗</a></div>
-      </div>
-      ${children.map(c => taskCard(c, depth+1)).join('')}`;
-  }
-
-  el.innerHTML = roots.map(t => taskCard(t, 0)).join('');
+  el.innerHTML = rootList.map(t => taskCardHTML(t, 0)).join('');
 }
 
 // ════════════════════════════════════════════
@@ -728,12 +733,19 @@ async function toggleTask(id) {
 
   if (wasDone) { toast('↩','Відмічено як невиконане'); return; }
 
-  // Закриваємо задачу прямо в ClickUp
+  // Закриваємо задачу в ClickUp ЧЕРЕЗ Apps Script (токен лишається на бекенді)
   if (!USE_MOCK && !String(id).startsWith('m') && !String(id).startsWith('td')) {
     try {
-      await cuFetch('/task/' + id, {
-        method: 'PUT',
-        body: JSON.stringify({ status: 'complete' })
+      await fetch(GS_URL, {
+        method: 'POST',
+        // text/plain уникає CORS-preflight для Apps Script
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'closeTask',
+          taskId: id,
+          taskName: task ? task.name : '',
+          durationMin: task ? task.mins : 0
+        })
       });
       toast('✅','ClickUp оновлено');
     } catch(e) {
