@@ -634,23 +634,9 @@ async function loadToday() {
       await new Promise(r => setTimeout(r, 700));
       TASKS = mockTasks();
     } else {
-      // Спершу teamId (швидко, кешується)
-      if (!CLICKUP_TEAM_ID) {
-        const teamData = await cuFetch('/team');
-        CLICKUP_TEAM_ID = teamData.teams[0].id;
-      }
-      // Запит через /team/.../task — швидкий, з фільтром по спейсу Маркетинг
-      let page = 0, raw = [];
-      while (true) {
-        const data = await cuFetch(
-          `/team/${CLICKUP_TEAM_ID}/task?assignees[]=${CLICKUP_ASSIGNEE}&space_ids[]=${CLICKUP_SPACE_ID}&include_closed=true&subtasks=true&page=${page}`
-        );
-        const tasks = data.tasks || [];
-        raw = raw.concat(tasks);
-        if (tasks.length < 100) break;
-        page++;
-      }
-      TASKS = raw.map(normalizeTask).filter(Boolean);
+      const res = await fetch(GS_URL + '?action=getTasks');
+      const data = await res.json();
+      TASKS = (data.tasks || []).map(normalizeTask).filter(Boolean);
     }
   }
 }
