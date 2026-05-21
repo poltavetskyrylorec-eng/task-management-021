@@ -564,19 +564,32 @@ function mockTasks() {
 // ════════════════════════════════════════════
 // FETCH TASKS — через Apps Script (action=getTasks)
 // ════════════════════════════════════════════
-// Нормалізація задачі: Apps Script віддає вже підготовлений формат
-// { id, parentId, name, statusType('open'|'closed'), dueMs|null, priority, mins, url }
+// Нормалізація задачі під реальний формат Apps Script:
+// { id, parent_id, name, status('open'|'closed'), status_name,
+//   due_date (ISO рядок | null), priority('urgent'|'high'|'normal'|'low'),
+//   assignees, time_estimate_mins, url }
 function normalizeTask(t) {
   const todayStart = new Date(); todayStart.setHours(0,0,0,0);
   const todayEnd   = new Date(); todayEnd.setHours(23,59,59,999);
-  const upcomingEnd = new Date(todayEnd); upcomingEnd.setDate(upcomingEnd.getDate()+3);
 
-  const isClosed = t.statusType === 'closed';
+  const isClosed = t.status === 'closed';
 
-  // dueMs — число в мс або null. Захист від секунд на випадок старого формату.
-  let due = (t.dueMs === null || t.dueMs === undefined || t.dueMs === '') ? null : parseInt(t.dueMs, 10);
-  if (due !== null && !isNaN(due) && due > 0 && due < 1e12) due = due * 1000;
-  if (isNaN(due)) due = null;
+  // due_date приходить як ISO-рядок ("2026-05-28T21:00:00.000Z").
+  // Підтримуємо також число в мс/секундах на випадок іншого формату.
+  let due = null;
+  if (t.due_date !== null && t.due_date !== undefined && t.due_date !== '') {
+    if (typeof t.due_date === 'number') {
+      due = t.due_date > 0 && t.due_date < 1e12 ? t.due_date * 1000 : t.due_date;
+    } else {
+      const parsed = Date.parse(t.due_date);            // ISO рядок
+      if (!isNaN(parsed)) {
+        due = parsed;
+      } else {
+        const n = parseInt(t.due_date, 10);             // числовий рядок
+        if (!isNaN(n)) due = (n > 0 && n < 1e12) ? n * 1000 : n;
+      }
+    }
+  }
 
   let bucket;
   if (isClosed) {
@@ -593,15 +606,18 @@ function normalizeTask(t) {
 
   let dueLabel = 'Без дедлайну';
   if (due) {
-    const d = Math.round((due - todayStart.getTime()) / 86400000);
+    const dueDay = new Date(due); dueDay.setHours(0,0,0,0);
+    const d = Math.round((dueDay.getTime() - todayStart.getTime()) / 86400000);
     dueLabel = d < 0 ? d + ' дн.' : d === 0 ? 'Сьогодні' : d === 1 ? 'Завтра' : '+' + d + ' дн.';
   }
 
-  const mins = (t.mins && !isNaN(parseInt(t.mins,10))) ? parseInt(t.mins,10) : 30;
+  const minsRaw = t.time_estimate_mins;
+  const mins = (minsRaw !== undefined && minsRaw !== null && !isNaN(parseInt(minsRaw,10)))
+    ? parseInt(minsRaw,10) : 30;
 
   return {
     id: String(t.id),
-    parentId: t.parentId ? String(t.parentId) : null,
+    parentId: t.parent_id ? String(t.parent_id) : null,
     name: t.name,
     status: isClosed ? 'closed' : 'open',
     bucket,
