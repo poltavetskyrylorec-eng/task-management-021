@@ -724,12 +724,6 @@ function renderBucket(elId, list, type) {
   el.innerHTML = roots.map(t => taskCard(t, 0)).join('');
 }
 
-  el.innerHTML = parents.map(t => {
-    const children = childrenMap[t.id] || [];
-    return taskCard(t, false) + children.map(c => taskCard(c, true)).join('');
-  }).join('');
-}
-
 // ════════════════════════════════════════════
 // TOGGLE — update ClickUp + Sheets
 // ════════════════════════════════════════════
