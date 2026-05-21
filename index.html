@@ -1,0 +1,1992 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Versaline — Task Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080A0F;
+    --surface: #0F1318;
+    --surface2: #161B24;
+    --surface3: #1E2530;
+    --border: #232A36;
+    --accent: #00E5A0;
+    --accent2: #0099FF;
+    --accent3: #FF6B35;
+    --warn: #FFB547;
+    --danger: #FF4757;
+    --text: #E8EDF5;
+    --text2: #8A9BB0;
+    --text3: #4A5568;
+    --font-display: 'Syne', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-display);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* GRID BACKGROUND */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,160,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,160,0.03) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    position: fixed;
+    left: 0; top: 0; bottom: 0;
+    width: 220px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+    padding: 28px 0;
+  }
+
+  .logo {
+    padding: 0 24px 28px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo-text {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--text);
+  }
+
+  .logo-text span {
+    color: var(--accent);
+  }
+
+  .logo-sub {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-top: 3px;
+  }
+
+  .nav {
+    flex: 1;
+    padding: 20px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text2);
+    border: 1px solid transparent;
+    text-decoration: none;
+    position: relative;
+  }
+
+  .nav-item:hover {
+    background: var(--surface2);
+    color: var(--text);
+  }
+
+  .nav-item.active {
+    background: rgba(0,229,160,0.08);
+    color: var(--accent);
+    border-color: rgba(0,229,160,0.15);
+  }
+
+  .nav-item .icon {
+    width: 16px;
+    height: 16px;
+    opacity: 0.8;
+    flex-shrink: 0;
+  }
+
+  .nav-badge {
+    margin-left: auto;
+    background: var(--danger);
+    color: white;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 10px;
+    font-weight: 500;
+  }
+
+  .nav-section {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text3);
+    padding: 12px 12px 6px;
+    margin-top: 8px;
+  }
+
+  .sidebar-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+  }
+
+  .user-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--bg);
+    flex-shrink: 0;
+  }
+
+  .user-name { font-size: 13px; font-weight: 600; }
+  .user-role { font-family: var(--font-mono); font-size: 10px; color: var(--text3); }
+
+  /* MAIN */
+  .main {
+    margin-left: 220px;
+    min-height: 100vh;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* VIEWS */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ========== TODAY VIEW ========== */
+
+  /* DAY ANALYTICS BAR */
+  .day-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+
+  .day-bar-date {
+    flex-shrink: 0;
+  }
+
+  .day-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+
+  .day-date {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.2;
+    margin-top: 2px;
+  }
+
+  .day-divider {
+    width: 1px;
+    height: 40px;
+    background: var(--border);
+    flex-shrink: 0;
+  }
+
+  .day-metrics {
+    display: flex;
+    gap: 32px;
+    flex: 1;
+  }
+
+  .day-metric {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .metric-val {
+    font-size: 24px;
+    font-weight: 800;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .metric-val.green { color: var(--accent); }
+  .metric-val.blue { color: var(--accent2); }
+  .metric-val.warn { color: var(--warn); }
+  .metric-val.danger { color: var(--danger); }
+
+  .metric-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 0.5px;
+  }
+
+  .day-progress-wrap {
+    flex: 1;
+    max-width: 280px;
+  }
+
+  .day-progress-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .progress-pct {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    font-family: var(--font-mono);
+  }
+
+  .progress-track {
+    height: 6px;
+    background: var(--surface3);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    border-radius: 10px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  .day-sync-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 500;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+
+  .day-sync-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .spin { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* PAGE */
+  .page-content {
+    padding: 32px;
+    max-width: 1100px;
+  }
+
+  /* SECTION HEADER */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .section-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text2);
+  }
+
+  .section-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  .section-dot.warn { background: var(--warn); }
+  .section-dot.blue { background: var(--accent2); }
+
+  .section-count {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text3);
+    background: var(--surface2);
+    padding: 2px 8px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+
+  /* TASK CARD */
+  .task-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 8px;
+    transition: all 0.2s;
+    cursor: default;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .task-card::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--border);
+    transition: background 0.2s;
+  }
+
+  .task-card.overdue::before { background: var(--danger); }
+  .task-card.today-due::before { background: var(--warn); }
+  .task-card.upcoming::before { background: var(--accent2); }
+  .task-card.manual::before { background: var(--accent); }
+
+  .task-card:hover {
+    border-color: rgba(255,255,255,0.08);
+    background: var(--surface2);
+  }
+
+  .task-card.done {
+    opacity: 0.45;
+  }
+
+  .task-card.done .task-name {
+    text-decoration: line-through;
+    color: var(--text3);
+  }
+
+  /* CHECKBOX */
+  .task-check {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    border: 2px solid var(--border);
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s;
+    margin-top: 1px;
+  }
+
+  .task-check:hover { border-color: var(--accent); }
+  .task-check.checked {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .check-icon { display: none; }
+  .task-check.checked .check-icon { display: block; }
+
+  .task-body { flex: 1; min-width: 0; }
+
+  .task-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.4;
+    margin-bottom: 6px;
+  }
+
+  .task-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .tag {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+    border: 1px solid;
+  }
+
+  .tag.overdue { color: var(--danger); border-color: rgba(255,71,87,0.3); background: rgba(255,71,87,0.08); }
+  .tag.today { color: var(--warn); border-color: rgba(255,181,71,0.3); background: rgba(255,181,71,0.08); }
+  .tag.upcoming { color: var(--accent2); border-color: rgba(0,153,255,0.3); background: rgba(0,153,255,0.08); }
+  .tag.manual { color: var(--accent); border-color: rgba(0,229,160,0.3); background: rgba(0,229,160,0.08); }
+  .tag.clickup { color: var(--text3); border-color: var(--border); background: var(--surface2); }
+  .tag.priority-high { color: #FF6B35; border-color: rgba(255,107,53,0.3); background: rgba(255,107,53,0.08); }
+
+  .task-assignee {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  .mini-avatar {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    font-weight: 700;
+    color: white;
+  }
+
+  .task-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+
+  .task-card:hover .task-actions { opacity: 1; }
+
+  .task-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text3);
+    transition: all 0.15s;
+    font-size: 12px;
+  }
+
+  .task-btn:hover { border-color: var(--text2); color: var(--text); }
+
+  /* ADD TASK FORM */
+  .add-task-row {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+  }
+
+  .add-task-input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .add-task-input::placeholder { color: var(--text3); }
+  .add-task-input:focus { border-color: var(--accent); }
+
+  .btn-primary {
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .btn-primary:hover { background: #00ffb3; }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--text2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-family: var(--font-display);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .btn-ghost:hover { border-color: var(--text2); color: var(--text); }
+
+  /* SECTIONS GAP */
+  .tasks-section { margin-bottom: 32px; }
+
+  /* ========== WEEK VIEW ========== */
+  .week-header {
+    padding: 24px 32px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+
+  .week-title {
+    font-size: 22px;
+    font-weight: 800;
+  }
+
+  .week-nav {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .week-nav-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text2);
+    transition: all 0.15s;
+    font-size: 14px;
+  }
+
+  .week-nav-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .week-range { font-family: var(--font-mono); font-size: 12px; color: var(--text2); }
+
+  /* WEEK GRID */
+  .week-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 12px;
+    padding: 0 32px 32px;
+  }
+
+  .week-col {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .week-col.today-col {
+    border-color: rgba(0,229,160,0.3);
+    box-shadow: 0 0 0 1px rgba(0,229,160,0.1);
+  }
+
+  .week-col-header {
+    padding: 12px 14px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .week-day-name {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 2px;
+  }
+
+  .week-day-num {
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .today-col .week-day-num { color: var(--accent); }
+
+  .week-col-progress {
+    margin-top: 6px;
+    height: 3px;
+    background: var(--surface2);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .week-col-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+  }
+
+  .week-col-body {
+    flex: 1;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .week-task-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 6px 8px;
+    background: var(--surface2);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    border: 1px solid transparent;
+  }
+
+  .week-task-item:hover { border-color: var(--border); }
+
+  .week-task-check {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    border: 1.5px solid var(--border);
+    flex-shrink: 0;
+    margin-top: 1px;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .week-task-check.done {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .week-task-name {
+    font-size: 11px;
+    color: var(--text2);
+    line-height: 1.4;
+    flex: 1;
+  }
+
+  .week-task-item.done .week-task-name {
+    text-decoration: line-through;
+    color: var(--text3);
+  }
+
+  .week-empty {
+    text-align: center;
+    padding: 20px 0;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text3);
+  }
+
+  .week-add-btn {
+    margin: 6px 10px 10px;
+    width: calc(100% - 20px);
+    background: transparent;
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+    padding: 6px;
+    font-family: var(--font-display);
+    font-size: 11px;
+    color: var(--text3);
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+
+  .week-add-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ========== MONTH VIEW ========== */
+  .month-header {
+    padding: 24px 32px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+
+  .month-title { font-size: 22px; font-weight: 800; }
+
+  .month-content { padding: 0 32px 32px; }
+
+  /* KPI CARDS */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .kpi-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 20px 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .kpi-card::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--border);
+  }
+
+  .kpi-card.green::after { background: var(--accent); }
+  .kpi-card.blue::after { background: var(--accent2); }
+  .kpi-card.warn::after { background: var(--warn); }
+  .kpi-card.danger::after { background: var(--danger); }
+
+  .kpi-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+
+  .kpi-value {
+    font-size: 36px;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .kpi-card.green .kpi-value { color: var(--accent); }
+  .kpi-card.blue .kpi-value { color: var(--accent2); }
+  .kpi-card.warn .kpi-value { color: var(--warn); }
+  .kpi-card.danger .kpi-value { color: var(--danger); }
+
+  .kpi-sub {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--font-mono);
+  }
+
+  /* WEEK TABLE */
+  .month-table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+
+  .month-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .month-table th {
+    padding: 12px 16px;
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text3);
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+
+  .month-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid rgba(35,42,54,0.5);
+    font-size: 13px;
+    vertical-align: middle;
+  }
+
+  .month-table tr:last-child td { border-bottom: none; }
+  .month-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  .week-label {
+    font-weight: 600;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+
+  .week-dates {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 1px;
+    font-family: var(--font-mono);
+  }
+
+  .pct-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .mini-bar {
+    flex: 1;
+    height: 4px;
+    background: var(--surface3);
+    border-radius: 10px;
+    overflow: hidden;
+    max-width: 100px;
+  }
+
+  .mini-bar-fill {
+    height: 100%;
+    border-radius: 10px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+  }
+
+  .pct-num {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 600;
+    min-width: 36px;
+  }
+
+  .pct-num.great { color: var(--accent); }
+  .pct-num.ok { color: var(--warn); }
+  .pct-num.bad { color: var(--danger); }
+
+  .num-cell {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  /* CHART AREA */
+  .month-chart-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px 16px;
+  }
+
+  .chart-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text2);
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-family: var(--font-mono);
+  }
+
+  .chart-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    height: 120px;
+  }
+
+  .chart-bar-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    height: 100%;
+    justify-content: flex-end;
+  }
+
+  .chart-bar {
+    width: 100%;
+    border-radius: 4px 4px 0 0;
+    background: linear-gradient(180deg, var(--accent), rgba(0,229,160,0.3));
+    transition: opacity 0.2s;
+    position: relative;
+    min-height: 4px;
+  }
+
+  .chart-bar:hover { opacity: 0.8; }
+
+  .chart-bar-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text3);
+    text-align: center;
+  }
+
+  .chart-bar-val {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text2);
+    position: absolute;
+    top: -16px;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+  }
+
+  /* STATUS BADGE */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+
+  .status-badge.done { background: rgba(0,229,160,0.1); color: var(--accent); }
+  .status-badge.partial { background: rgba(255,181,71,0.1); color: var(--warn); }
+  .status-badge.missed { background: rgba(255,71,87,0.1); color: var(--danger); }
+
+  /* TOAST */
+  .toast-wrap {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .toast {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--text);
+    animation: slideIn 0.3s ease, fadeOut 0.3s ease 2.7s forwards;
+    min-width: 260px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
+
+  .toast-icon { font-size: 16px; }
+
+  @keyframes slideIn {
+    from { transform: translateX(40px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+
+  @keyframes fadeOut {
+    to { opacity: 0; transform: translateX(10px); }
+  }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(8,10,15,0.8);
+    backdrop-filter: blur(4px);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+
+  .modal-overlay.open {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    width: 480px;
+    max-width: calc(100vw - 48px);
+    transform: translateY(16px);
+    transition: transform 0.2s;
+  }
+
+  .modal-overlay.open .modal { transform: translateY(0); }
+
+  .modal-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 20px;
+  }
+
+  .form-group { margin-bottom: 16px; }
+
+  .form-label {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 6px;
+  }
+
+  .form-input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .form-input:focus { border-color: var(--accent); }
+
+  .form-select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-family: var(--font-display);
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+
+  /* LOADING SKELETON */
+  .skeleton {
+    background: linear-gradient(90deg, var(--surface2) 25%, var(--surface3) 50%, var(--surface2) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 6px;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="logo">
+    <div class="logo-text">Versa<span>line</span></div>
+    <div class="logo-sub">Task Tracker</div>
+  </div>
+
+  <div class="nav">
+    <div class="nav-section">Трекер</div>
+    <a class="nav-item active" onclick="switchView('today', this)">
+      <svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="2" y="3" width="12" height="11" rx="2"/>
+        <path d="M5 1v4M11 1v4M2 7h12"/>
+      </svg>
+      Сьогодні
+      <span class="nav-badge" id="overdue-badge">3</span>
+    </a>
+    <a class="nav-item" onclick="switchView('week', this)">
+      <svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M2 4h12M2 8h12M2 12h8"/>
+      </svg>
+      Тиждень
+    </a>
+    <a class="nav-item" onclick="switchView('month', this)">
+      <svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <rect x="2" y="2" width="12" height="12" rx="2"/>
+        <path d="M5 2v12M11 2v12M2 8h12"/>
+      </svg>
+      Місяць
+    </a>
+
+    <div class="nav-section" style="margin-top:16px;">Команда</div>
+    <a class="nav-item" onclick="switchView('today', this); return false;" style="pointer-events:none; opacity:0.4;">
+      <svg class="icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+        <circle cx="8" cy="5" r="3"/>
+        <path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/>
+      </svg>
+      Команда
+      <span style="font-family:var(--font-mono);font-size:9px;color:var(--text3);margin-left:auto;">soon</span>
+    </a>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="user-chip">
+      <div class="avatar">КП</div>
+      <div>
+        <div class="user-name">Кирило П.</div>
+        <div class="user-role">Founder</div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- ===== TODAY VIEW ===== -->
+  <div class="view active" id="view-today">
+
+    <!-- DAY ANALYTICS BAR -->
+    <div class="day-bar">
+      <div class="day-bar-date">
+        <div class="day-label">Сьогодні</div>
+        <div class="day-date" id="today-date">—</div>
+      </div>
+      <div class="day-divider"></div>
+
+      <div class="day-metrics">
+        <div class="day-metric">
+          <div class="metric-val green" id="metric-done">4</div>
+          <div class="metric-label">Виконано</div>
+        </div>
+        <div class="day-metric">
+          <div class="metric-val" id="metric-total">11</div>
+          <div class="metric-label">Всього задач</div>
+        </div>
+        <div class="day-metric">
+          <div class="metric-val warn" id="metric-overdue">3</div>
+          <div class="metric-label">Прострочені</div>
+        </div>
+        <div class="day-metric">
+          <div class="metric-val blue">2h 40m</div>
+          <div class="metric-label">Заплановано</div>
+        </div>
+      </div>
+
+      <div class="day-progress-wrap">
+        <div class="day-progress-header">
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--text3);">Виконання плану</span>
+          <span class="progress-pct" id="progress-pct">36%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progress-bar" style="width:36%"></div>
+        </div>
+      </div>
+
+      <button class="day-sync-btn" onclick="syncClickUp()">
+        <svg id="sync-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M14 8A6 6 0 1 1 8 2M8 2l3 3M8 2l3-3" stroke-linecap="round"/>
+        </svg>
+        Синхронізувати
+      </button>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="page-content">
+
+      <!-- OVERDUE -->
+      <div class="tasks-section">
+        <div class="section-header">
+          <div class="section-title">
+            <div class="section-dot warn"></div>
+            Прострочені
+          </div>
+          <span class="section-count">3</span>
+        </div>
+
+        <div id="overdue-list">
+          <!-- Task 1 -->
+          <div class="task-card overdue" id="task-1">
+            <div class="task-check" onclick="toggleTask('task-1', 'Розробити лендінг для Agency Partner Playbook', 'overdue')">
+              <svg class="check-icon" width="10" height="10" viewBox="0 0 12 12" fill="none">
+                <path d="M2 6l3 3 5-5" stroke="#080A0F" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="task-body">
+              <div class="task-name">Розробити лендінг для Agency Partner Playbook</div>
+              <div class="task-meta">
+                <span class="tag overdue">–2 дні</span>
+                <span class="tag priority-high">Високий</span>
+                <span class="tag clickup">ClickUp</span>
+                <div class="task-assignee">
+                  <div class="mini-avatar">КП</div>
+                  Кирило
+                </div>
+              </div>
+            </div>
+            <div class="task-actions">
+              <button class="task-btn" title="Відкрити в ClickUp">↗</button>
+              <button class="task-btn" title="Перенести">→</button>
+            </div>
+          </div>
+
+          <!-- Task 2 -->
+          <div class="task-card overdue" id="task-2">
+            <div class="task-check" onclick="toggleTask('task-2', 'Відправити email-сіквенс batch 2', 'overdue')">
+              <svg class="check-icon" width="10" height="10" viewBox="0 0 12 12" fill="none">
+                <path d="M2 6l3 3 5-5" stroke="#080A0F" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="task-body">
+              <div class="task-name">Відправити email-сіквенс batch 2</div>
+              <div class="task-meta">
+                <span class="tag overdue">–1 день</span>
+                <span class="tag clickup">ClickUp</span>
+                <div class="task-assignee">
+                  <div class="mini-avatar">КК</div>
+                  Катя
+                </div>
+              </div>
+            </div>
+            <div class="task-actions">
+              <button class="task-btn" title="Відкрити в ClickUp">↗</button>
+              <button class="task-btn" title="Перенести">→</button>
+            </div>
+          </div>
+
+          <!-- Task 3 - done -->
+          <div class="task-card overdue done" id="task-3">
+            <div class="task-check checked" onclick="toggleTask('task-3', 'Оновити SKILL.md для Telegram постів', 'overdue')">
+              <svg class="check-icon" width="10" height="10" viewBox="0 0 12 12" fill="none">
+                <path d="M2 6l3 3 5-5" stroke="#080A0F" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="task-body">
+              <div class="task-name">Оновити SKILL.md для Telegram постів</div>
+              <div class="task-meta">
+                <span class="tag overdue">–1 день</span>
+                <span class="tag clickup">ClickUp</span>
+              </div>
+            </div>
+            <div class="task-actions">
+              <button class="task-btn">↗</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TODAY DUE -->
+      <div class="tasks-section">
+        <div class="section-header">
+          <div class="section-title">
+            <div class="section-dot"></div>
+            На сьогодні
+          </div>
+          <span class="section-count">5</span>
+        </div>
+
+        <div id="today-list">
+          <div class="task-card today-due" id="task-4">
+            <div class="task-check" onclick="toggleTask('task-4', 'LinkedIn пост про Agency Partner Program', 'today')">
+              <svg class="check-icon" width="10" height="10" viewBox="0 0 12 12" fill="none">
+                <path d="M2 6l3 3 5-5" stroke="#080A0F" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="task-body">
+              <div class="task-name">LinkedIn пост про Agency Partner Program</div>
+              <div class="task-meta">
+                <span class="tag today">Сьогодні</span>
+                <span class="tag clickup">ClickUp</span>
+                <div class="task-assignee"><div class="mini-avatar">КП</div> Кирило</div>
+              </div>
+            </div>
+            <div class="task-actions"><button class="task-btn">↗</button><button class="task-btn">→</button></div>
+          </div>
+
+          <div class="task-card today-due done" id="task-5">
+            <div class="task-check checked" onclick="toggleTask('task-5', 'Перевірити SEO агенції batch 8', 'today')">
+              <svg class="check-icon" width="10" height="10" viewBox="0 0 12 12" fill="none">
+                <path d="M2 6l3 3 5-5" stroke="#080A0F" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="task-body">
+              <div class="task-name">Перевірити SEO агенції batch 8</div>
+              <div class="task-meta">
+                <span class="tag today">Сьогодні</span>
+                <span class="tag clickup">ClickUp</span>
+              </div>
+            </div>
+            <div class="task-actions"><button class="task-btn">↗</button></div>
+          </div>
+
+          <div class="task-card today-due done" id="task-6">
+            <div class="task-check checked" onclick="toggleTask('task-6', 'Відповісти на 5 LinkedIn leads', 'today')">
+              <svg class="check-icon" width="10" height="10" viewBox="0 0 12 12" fill="none">
+                <path d="M2 6l3 3 5-5" stroke="#080A0F" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="task-body">
+              <div class="task-name">Відповісти на 5 LinkedIn leads</div>
+              <div class="task-meta">
+                <span class="tag today">Сьогодні</span>
+                <span class="tag clickup">ClickUp</span>
+              </div>
+            </div>
+            <div class="task-actions"><button class="task-btn">↗</button></div>
+          </div>
+
+          <div class="task-card today-due" id="task-7">
+            <div class="task-check" onclick="toggleTask('task-7', 'Зробити pricing review для Scale плану', 'today')">
+              <svg class="check-icon" width="10" height="10" viewBox="0 0 12 12" fill="none">
+                <path d="M2 6l3 3 5-5" stroke="#080A0F" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="task-body">
+              <div class="task-name">Зробити pricing review для Scale плану</div>
+              <div class="task-meta">
+                <span class="tag today">Сьогодні</span>
+                <span class="tag priority-high">Високий</span>
+                <span class="tag clickup">ClickUp</span>
+                <div class="task-assignee"><div class="mini-avatar">КП</div> Кирило</div>
+              </div>
+            </div>
+            <div class="task-actions"><button class="task-btn">↗</button><button class="task-btn">→</button></div>
+          </div>
+
+          <div class="task-card manual" id="task-8">
+            <div class="task-check" onclick="toggleTask('task-8', 'Подзвонити партнеру в Польщі', 'manual')">
+              <svg class="check-icon" width="10" height="10" viewBox="0 0 12 12" fill="none">
+                <path d="M2 6l3 3 5-5" stroke="#080A0F" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <div class="task-body">
+              <div class="task-name">Подзвонити партнеру в Польщі</div>
+              <div class="task-meta">
+                <span class="tag manual">Вручну</span>
+              </div>
+            </div>
+            <div class="task-actions"><button class="task-btn">✕</button></div>
+          </div>
+        </div>
+
+        <!-- ADD TASK ROW -->
+        <div class="add-task-row">
+          <input class="add-task-input" type="text" placeholder="Додати задачу вручну..." id="manual-task-input" onkeydown="if(event.key==='Enter') addManualTask()">
+          <button class="btn-ghost" onclick="addManualTask()">+ Додати</button>
+          <button class="btn-ghost" onclick="openModal()">
+            <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M8 2v12M2 8h12"/>
+            </svg>
+            Детально
+          </button>
+        </div>
+      </div>
+
+      <!-- UPCOMING -->
+      <div class="tasks-section">
+        <div class="section-header">
+          <div class="section-title">
+            <div class="section-dot blue"></div>
+            Найближчі дедлайни
+          </div>
+          <span class="section-count">3</span>
+        </div>
+
+        <div class="task-card upcoming" id="task-9">
+          <div class="task-check" onclick="toggleTask('task-9', 'Записати YouTube скрипт #4', 'upcoming')">
+            <svg class="check-icon" width="10" height="10" viewBox="0 0 12 12" fill="none">
+              <path d="M2 6l3 3 5-5" stroke="#080A0F" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="task-body">
+            <div class="task-name">Записати YouTube скрипт #4</div>
+            <div class="task-meta">
+              <span class="tag upcoming">Завтра</span>
+              <span class="tag clickup">ClickUp</span>
+            </div>
+          </div>
+          <div class="task-actions"><button class="task-btn">↗</button></div>
+        </div>
+
+        <div class="task-card upcoming" id="task-10">
+          <div class="task-check" onclick="toggleTask('task-10', 'Фінальний review Agency Playbook v1', 'upcoming')">
+            <svg class="check-icon" width="10" height="10" viewBox="0 0 12 12" fill="none">
+              <path d="M2 6l3 3 5-5" stroke="#080A0F" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div class="task-body">
+            <div class="task-name">Фінальний review Agency Playbook v1</div>
+            <div class="task-meta">
+              <span class="tag upcoming">+2 дні</span>
+              <span class="tag priority-high">Високий</span>
+              <span class="tag clickup">ClickUp</span>
+            </div>
+          </div>
+          <div class="task-actions"><button class="task-btn">↗</button><button class="task-btn">→</button></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===== WEEK VIEW ===== -->
+  <div class="view" id="view-week">
+    <div class="week-header">
+      <div>
+        <div class="logo-sub" style="margin-bottom:4px;">Тижневий трекер</div>
+        <div class="week-title">Тиждень 21</div>
+      </div>
+      <div class="week-nav">
+        <button class="week-nav-btn">‹</button>
+        <span class="week-range">19–25 трав 2025</span>
+        <button class="week-nav-btn">›</button>
+      </div>
+    </div>
+
+    <div class="week-grid">
+      <!-- MON -->
+      <div class="week-col">
+        <div class="week-col-header">
+          <div class="week-day-name">Пн</div>
+          <div class="week-day-num">19</div>
+          <div class="week-col-progress"><div class="week-col-progress-fill" style="width:100%"></div></div>
+        </div>
+        <div class="week-col-body">
+          <div class="week-task-item done" onclick="weekToggle(this)">
+            <div class="week-task-check done"><svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#080A0F" stroke-width="2" stroke-linecap="round"/></svg></div>
+            <div class="week-task-name">LinkedIn outreach 20 leads</div>
+          </div>
+          <div class="week-task-item done" onclick="weekToggle(this)">
+            <div class="week-task-check done"><svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#080A0F" stroke-width="2" stroke-linecap="round"/></svg></div>
+            <div class="week-task-name">Sync з командою</div>
+          </div>
+          <div class="week-task-item done" onclick="weekToggle(this)">
+            <div class="week-task-check done"><svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#080A0F" stroke-width="2" stroke-linecap="round"/></svg></div>
+            <div class="week-task-name">Email batch 1 відправлено</div>
+          </div>
+        </div>
+        <button class="week-add-btn" onclick="weekAddTask(this)">+ задача</button>
+      </div>
+
+      <!-- TUE -->
+      <div class="week-col">
+        <div class="week-col-header">
+          <div class="week-day-name">Вт</div>
+          <div class="week-day-num">20</div>
+          <div class="week-col-progress"><div class="week-col-progress-fill" style="width:66%"></div></div>
+        </div>
+        <div class="week-col-body">
+          <div class="week-task-item done" onclick="weekToggle(this)">
+            <div class="week-task-check done"><svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#080A0F" stroke-width="2" stroke-linecap="round"/></svg></div>
+            <div class="week-task-name">SEO classifier batch 7</div>
+          </div>
+          <div class="week-task-item done" onclick="weekToggle(this)">
+            <div class="week-task-check done"><svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#080A0F" stroke-width="2" stroke-linecap="round"/></svg></div>
+            <div class="week-task-name">Telegram пост — факт дня</div>
+          </div>
+          <div class="week-task-item" onclick="weekToggle(this)">
+            <div class="week-task-check"></div>
+            <div class="week-task-name">Оновити pricing page</div>
+          </div>
+        </div>
+        <button class="week-add-btn" onclick="weekAddTask(this)">+ задача</button>
+      </div>
+
+      <!-- WED = TODAY -->
+      <div class="week-col today-col">
+        <div class="week-col-header">
+          <div class="week-day-name">Ср ← сьогодні</div>
+          <div class="week-day-num">21</div>
+          <div class="week-col-progress"><div class="week-col-progress-fill" style="width:36%"></div></div>
+        </div>
+        <div class="week-col-body">
+          <div class="week-task-item done" onclick="weekToggle(this)">
+            <div class="week-task-check done"><svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#080A0F" stroke-width="2" stroke-linecap="round"/></svg></div>
+            <div class="week-task-name">SEO batch 8</div>
+          </div>
+          <div class="week-task-item done" onclick="weekToggle(this)">
+            <div class="week-task-check done"><svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#080A0F" stroke-width="2" stroke-linecap="round"/></svg></div>
+            <div class="week-task-name">LinkedIn leads reply x5</div>
+          </div>
+          <div class="week-task-item" onclick="weekToggle(this)">
+            <div class="week-task-check"></div>
+            <div class="week-task-name">LinkedIn пост AEO</div>
+          </div>
+          <div class="week-task-item" onclick="weekToggle(this)">
+            <div class="week-task-check"></div>
+            <div class="week-task-name">Agency Partner лендінг</div>
+          </div>
+        </div>
+        <button class="week-add-btn" onclick="weekAddTask(this)">+ задача</button>
+      </div>
+
+      <!-- THU -->
+      <div class="week-col">
+        <div class="week-col-header">
+          <div class="week-day-name">Чт</div>
+          <div class="week-day-num">22</div>
+          <div class="week-col-progress"><div class="week-col-progress-fill" style="width:0%"></div></div>
+        </div>
+        <div class="week-col-body">
+          <div class="week-task-item" onclick="weekToggle(this)">
+            <div class="week-task-check"></div>
+            <div class="week-task-name">YouTube скрипт #4</div>
+          </div>
+          <div class="week-task-item" onclick="weekToggle(this)">
+            <div class="week-task-check"></div>
+            <div class="week-task-name">Pricing review Scale</div>
+          </div>
+        </div>
+        <button class="week-add-btn" onclick="weekAddTask(this)">+ задача</button>
+      </div>
+
+      <!-- FRI -->
+      <div class="week-col">
+        <div class="week-col-header">
+          <div class="week-day-name">Пт</div>
+          <div class="week-day-num">23</div>
+          <div class="week-col-progress"><div class="week-col-progress-fill" style="width:0%"></div></div>
+        </div>
+        <div class="week-col-body">
+          <div class="week-task-item" onclick="weekToggle(this)">
+            <div class="week-task-check"></div>
+            <div class="week-task-name">Agency Playbook review</div>
+          </div>
+          <div class="week-empty">+ ClickUp задачі</div>
+        </div>
+        <button class="week-add-btn" onclick="weekAddTask(this)">+ задача</button>
+      </div>
+
+      <!-- SAT -->
+      <div class="week-col" style="opacity:0.5">
+        <div class="week-col-header">
+          <div class="week-day-name">Сб</div>
+          <div class="week-day-num">24</div>
+          <div class="week-col-progress"><div class="week-col-progress-fill" style="width:0%"></div></div>
+        </div>
+        <div class="week-col-body">
+          <div class="week-empty">Вихідний</div>
+        </div>
+        <button class="week-add-btn" onclick="weekAddTask(this)">+ задача</button>
+      </div>
+
+      <!-- SUN -->
+      <div class="week-col" style="opacity:0.5">
+        <div class="week-col-header">
+          <div class="week-day-name">Нд</div>
+          <div class="week-day-num">25</div>
+          <div class="week-col-progress"><div class="week-col-progress-fill" style="width:0%"></div></div>
+        </div>
+        <div class="week-col-body">
+          <div class="week-empty">Вихідний</div>
+        </div>
+        <button class="week-add-btn" onclick="weekAddTask(this)">+ задача</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== MONTH VIEW ===== -->
+  <div class="view" id="view-month">
+    <div class="month-header">
+      <div>
+        <div class="logo-sub" style="margin-bottom:4px;">Місячна аналітика</div>
+        <div class="month-title">Травень 2025</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <span style="font-family:var(--font-mono);font-size:11px;color:var(--text3);">Джерело: Google Sheets</span>
+        <button class="btn-ghost" style="font-size:11px;">⬇ Експорт</button>
+      </div>
+    </div>
+
+    <div class="month-content">
+
+      <!-- KPI CARDS -->
+      <div class="kpi-grid">
+        <div class="kpi-card green">
+          <div class="kpi-label">Виконано задач</div>
+          <div class="kpi-value">87</div>
+          <div class="kpi-sub">з 138 запланованих</div>
+        </div>
+        <div class="kpi-card blue">
+          <div class="kpi-label">% Виконання</div>
+          <div class="kpi-value">63%</div>
+          <div class="kpi-sub">ціль: 80%</div>
+        </div>
+        <div class="kpi-card warn">
+          <div class="kpi-label">Прострочено</div>
+          <div class="kpi-value">18</div>
+          <div class="kpi-sub">перенесено на наступний тиждень</div>
+        </div>
+        <div class="kpi-card danger">
+          <div class="kpi-label">Не виконано</div>
+          <div class="kpi-value">33</div>
+          <div class="kpi-sub">скасовано або видалено</div>
+        </div>
+      </div>
+
+      <!-- WEEK TABLE -->
+      <div class="month-table-wrap">
+        <table class="month-table">
+          <thead>
+            <tr>
+              <th>Тиждень</th>
+              <th>Всього</th>
+              <th>Виконано</th>
+              <th>Прострочено</th>
+              <th>% Плану</th>
+              <th>Статус</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div class="week-label">Тиждень 18</div>
+                <div class="week-dates">29 кв – 5 трав</div>
+              </td>
+              <td class="num-cell">28</td>
+              <td class="num-cell" style="color:var(--accent)">24</td>
+              <td class="num-cell" style="color:var(--warn)">2</td>
+              <td>
+                <div class="pct-cell">
+                  <div class="mini-bar"><div class="mini-bar-fill" style="width:86%"></div></div>
+                  <span class="pct-num great">86%</span>
+                </div>
+              </td>
+              <td><span class="status-badge done">✓ Виконано</span></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="week-label">Тиждень 19</div>
+                <div class="week-dates">6–12 трав</div>
+              </td>
+              <td class="num-cell">32</td>
+              <td class="num-cell" style="color:var(--accent)">22</td>
+              <td class="num-cell" style="color:var(--warn)">5</td>
+              <td>
+                <div class="pct-cell">
+                  <div class="mini-bar"><div class="mini-bar-fill" style="width:69%"></div></div>
+                  <span class="pct-num ok">69%</span>
+                </div>
+              </td>
+              <td><span class="status-badge partial">~ Частково</span></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="week-label">Тиждень 20</div>
+                <div class="week-dates">13–19 трав</div>
+              </td>
+              <td class="num-cell">35</td>
+              <td class="num-cell" style="color:var(--accent)">27</td>
+              <td class="num-cell" style="color:var(--warn)">6</td>
+              <td>
+                <div class="pct-cell">
+                  <div class="mini-bar"><div class="mini-bar-fill" style="width:77%"></div></div>
+                  <span class="pct-num ok">77%</span>
+                </div>
+              </td>
+              <td><span class="status-badge partial">~ Частково</span></td>
+            </tr>
+            <tr>
+              <td>
+                <div class="week-label">Тиждень 21</div>
+                <div class="week-dates">20–25 трав ← зараз</div>
+              </td>
+              <td class="num-cell">43</td>
+              <td class="num-cell" style="color:var(--accent)">14</td>
+              <td class="num-cell" style="color:var(--danger)">5</td>
+              <td>
+                <div class="pct-cell">
+                  <div class="mini-bar"><div class="mini-bar-fill" style="width:33%"></div></div>
+                  <span class="pct-num bad">33%</span>
+                </div>
+              </td>
+              <td><span class="status-badge missed">✕ В процесі</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- CHART -->
+      <div class="month-chart-wrap">
+        <div class="chart-title">Виконання по тижнях</div>
+        <div class="chart-bars">
+          <div class="chart-bar-wrap">
+            <div class="chart-bar" style="height:86%;background:linear-gradient(180deg,var(--accent),rgba(0,229,160,0.3))">
+              <div class="chart-bar-val">86%</div>
+            </div>
+            <div class="chart-bar-label">Т18</div>
+          </div>
+          <div class="chart-bar-wrap">
+            <div class="chart-bar" style="height:69%;background:linear-gradient(180deg,var(--warn),rgba(255,181,71,0.3))">
+              <div class="chart-bar-val">69%</div>
+            </div>
+            <div class="chart-bar-label">Т19</div>
+          </div>
+          <div class="chart-bar-wrap">
+            <div class="chart-bar" style="height:77%;background:linear-gradient(180deg,var(--warn),rgba(255,181,71,0.3))">
+              <div class="chart-bar-val">77%</div>
+            </div>
+            <div class="chart-bar-label">Т20</div>
+          </div>
+          <div class="chart-bar-wrap">
+            <div class="chart-bar" style="height:33%;background:linear-gradient(180deg,var(--danger),rgba(255,71,87,0.3))">
+              <div class="chart-bar-val">33%</div>
+            </div>
+            <div class="chart-bar-label">Т21</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</main>
+
+<!-- MODAL: Add Task -->
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-title">Нова задача</div>
+    <div class="form-group">
+      <label class="form-label">Назва задачі</label>
+      <input class="form-input" type="text" placeholder="Що потрібно зробити?">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Виконавець</label>
+        <select class="form-select">
+          <option>Кирило П.</option>
+          <option>Катя К.</option>
+          <option>Іллі</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Пріоритет</label>
+        <select class="form-select">
+          <option>Нормальний</option>
+          <option>Високий</option>
+          <option>Терміновий</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Дедлайн</label>
+        <input class="form-input" type="date">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Час (хв)</label>
+        <input class="form-input" type="number" placeholder="30">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Джерело</label>
+      <select class="form-select">
+        <option>Вручну</option>
+        <option>Створити в ClickUp</option>
+      </select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeModal()">Скасувати</button>
+      <button class="btn-primary" onclick="closeModal(); showToast('✅', 'Задачу додано')">Додати задачу</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<script>
+  // DATE
+  const now = new Date();
+  const days = ['Неділя','Понеділок','Вівторок','Середа','Четвер','П\'ятниця','Субота'];
+  const months = ['січня','лютого','березня','квітня','травня','червня','липня','серпня','вересня','жовтня','листопада','грудня'];
+  document.getElementById('today-date').textContent =
+    `${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]}`;
+
+  // NAVIGATION
+  function switchView(view, el) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('view-' + view).classList.add('active');
+    if (el) el.classList.add('active');
+  }
+
+  // TASK STATE
+  let doneCount = 4;
+  let totalCount = 11;
+
+  function updateMetrics() {
+    document.getElementById('metric-done').textContent = doneCount;
+    document.getElementById('metric-total').textContent = totalCount;
+    const pct = Math.round((doneCount / totalCount) * 100);
+    document.getElementById('progress-pct').textContent = pct + '%';
+    document.getElementById('progress-bar').style.width = pct + '%';
+  }
+
+  function toggleTask(id, name, section) {
+    const card = document.getElementById(id);
+    const check = card.querySelector('.task-check');
+    const wasDone = check.classList.contains('checked');
+
+    if (wasDone) {
+      check.classList.remove('checked');
+      card.classList.remove('done');
+      doneCount = Math.max(0, doneCount - 1);
+      showToast('↩', 'Задачу відмічено як невиконану');
+    } else {
+      check.classList.add('checked');
+      card.classList.add('done');
+      doneCount++;
+      // In real version: PATCH ClickUp + write to Sheets
+      showToast('✅', `«${name.substring(0,30)}...» виконано`);
+    }
+    updateMetrics();
+  }
+
+  // WEEK TOGGLE
+  function weekToggle(item) {
+    const check = item.querySelector('.week-task-check');
+    const isDone = check.classList.contains('done');
+    if (isDone) {
+      check.classList.remove('done');
+      check.innerHTML = '';
+      item.classList.remove('done');
+    } else {
+      check.classList.add('done');
+      check.innerHTML = '<svg width="8" height="8" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#080A0F" stroke-width="2" stroke-linecap="round"/></svg>';
+      item.classList.add('done');
+    }
+  }
+
+  // WEEK ADD
+  function weekAddTask(btn) {
+    const body = btn.previousElementSibling;
+    const input = document.createElement('input');
+    input.style.cssText = 'width:100%;background:var(--surface3);border:1px solid var(--accent);border-radius:5px;padding:5px 8px;color:var(--text);font-size:11px;font-family:var(--font-display);outline:none;margin-bottom:4px;';
+    input.placeholder = 'Назва задачі...';
+    body.appendChild(input);
+    input.focus();
+    input.onkeydown = function(e) {
+      if (e.key === 'Enter' && input.value.trim()) {
+        const name = input.value.trim();
+        input.remove();
+        const item = document.createElement('div');
+        item.className = 'week-task-item';
+        item.onclick = function() { weekToggle(item); };
+        item.innerHTML = `<div class="week-task-check"></div><div class="week-task-name">${name}</div>`;
+        body.appendChild(item);
+        showToast('📝', 'Задачу додано');
+      }
+      if (e.key === 'Escape') input.remove();
+    };
+  }
+
+  // MANUAL ADD
+  function addManualTask() {
+    const input = document.getElementById('manual-task-input');
+    const val = input.value.trim();
+    if (!val) return;
+    const id = 'task-manual-' + Date.now();
+    const list = document.getElementById('today-list');
+    const card = document.createElement('div');
+    card.className = 'task-card manual';
+    card.id = id;
+    card.innerHTML = `
+      <div class="task-check" onclick="toggleTask('${id}', '${val}', 'manual')">
+        <svg class="check-icon" width="10" height="10" viewBox="0 0 12 12" fill="none">
+          <path d="M2 6l3 3 5-5" stroke="#080A0F" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="task-body">
+        <div class="task-name">${val}</div>
+        <div class="task-meta">
+          <span class="tag manual">Вручну</span>
+        </div>
+      </div>
+      <div class="task-actions">
+        <button class="task-btn" onclick="document.getElementById('${id}').remove();totalCount--;updateMetrics()">✕</button>
+      </div>`;
+    list.appendChild(card);
+    input.value = '';
+    totalCount++;
+    updateMetrics();
+    showToast('📝', `«${val}» додано`);
+  }
+
+  // SYNC
+  function syncClickUp() {
+    const icon = document.getElementById('sync-icon');
+    icon.classList.add('spin');
+    // In real version: fetch('/api/tasks/today') and reload
+    setTimeout(() => {
+      icon.classList.remove('spin');
+      showToast('🔄', 'Задачі синхронізовано з ClickUp');
+    }, 1800);
+  }
+
+  // MODAL
+  function openModal() {
+    document.getElementById('modal-overlay').classList.add('open');
+  }
+  function closeModal() {
+    document.getElementById('modal-overlay').classList.remove('open');
+  }
+
+  // TOAST
+  function showToast(icon, msg) {
+    const wrap = document.getElementById('toast-wrap');
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.innerHTML = `<span class="toast-icon">${icon}</span><span>${msg}</span>`;
+    wrap.appendChild(t);
+    setTimeout(() => t.remove(), 3200);
+  }
+
+  updateMetrics();
+</script>
+</body>
+</html>
