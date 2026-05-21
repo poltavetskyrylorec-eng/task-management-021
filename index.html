@@ -641,7 +641,7 @@ async function loadToday() {
       let page = 0, raw = [];
       while (true) {
         const data = await cuFetch(
-          `/team/${CLICKUP_TEAM_ID}/task?assignees[]=${CLICKUP_ASSIGNEE}&space_ids[]=${CLICKUP_SPACE_ID}&include_closed=true&subtasks=false&page=${page}`
+          `/team/${CLICKUP_TEAM_ID}/task?assignees[]=${CLICKUP_ASSIGNEE}&space_ids[]=${CLICKUP_SPACE_ID}&include_closed=true&subtasks=true&page=${page}`
         );
         const tasks = data.tasks || [];
         raw = raw.concat(tasks);
