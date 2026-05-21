@@ -938,7 +938,7 @@ async function buildMonth(){
         const [c1,c2]=colorFor(w.pct);
         return `<div class="c-bar-wrap"><div class="c-bar" style="height:${w.pct}%;background:linear-gradient(180deg,${c1},${c2})"><div class="c-bar-val">${w.pct}%</div></div><div class="c-bar-label">${w.w}</div></div>`;
       }).join('')
-    : '<div style="color:var(--text3);font-size:11px;align-self:flex-end;">Дані з'являться після перших виконаних задач</div>';
+    : '<div style="color:var(--text3);font-size:11px;align-self:flex-end;">Дані з&#39;являться після перших виконаних задач</div>';
 
   document.getElementById('month-table-body').innerHTML = weeks.map(w=>{
     const pc=w.pct>=80?'great':w.pct>=50?'ok':'bad';
