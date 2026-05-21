@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DABUDAI — Team Analytics</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:#07090E; --surface:#0D1117; --surface2:#141923; --surface3:#1C2333;
+  --border:#1E2840; --accent:#00E5A0; --accent2:#0EA5E9; --accent3:#FF6B35;
+  --warn:#F59E0B; --danger:#EF4444; --text:#E2E8F5; --text2:#7D8FA8; --text3:#3D4F68;
+  --font:'Montserrat',sans-serif;
+  --r:10px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;}
+body{background:var(--bg);color:var(--text);font-family:var(--font);overflow-x:hidden;
+  font-variant-numeric:tabular-nums;font-feature-settings:"tnum";}
+body::before{content:'';position:fixed;inset:0;
+  background-image:linear-gradient(rgba(0,229,160,.025) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(0,229,160,.025) 1px,transparent 1px);
+  background-size:56px 56px;pointer-events:none;z-index:0;}
+
+/* ── HEADER ── */
+.header{position:sticky;top:0;z-index:50;background:var(--surface);
+  border-bottom:1px solid var(--border);padding:0 32px;
+  display:flex;align-items:center;gap:24px;height:60px;}
+.logo-mark{font-size:16px;font-weight:900;letter-spacing:1px;white-space:nowrap;}
+.logo-mark span{color:var(--accent);}
+.logo-sub{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:2px;font-weight:600;}
+.h-divider{width:1px;height:30px;background:var(--border);}
+
+/* Month selector */
+.month-select{background:var(--surface2);border:1px solid var(--border);
+  border-radius:8px;padding:7px 12px;color:var(--text);font-family:var(--font);
+  font-size:12px;font-weight:600;outline:none;cursor:pointer;
+  transition:border-color .15s;}
+.month-select:focus{border-color:var(--accent);}
+
+.h-spacer{flex:1;}
+.refresh-btn{display:flex;align-items:center;gap:8px;
+  background:var(--accent);color:var(--bg);border:none;border-radius:8px;
+  padding:8px 18px;font-family:var(--font);font-size:12px;font-weight:700;
+  cursor:pointer;transition:all .15s;}
+.refresh-btn:hover{background:#00ffb3;}
+.refresh-btn:disabled{background:var(--surface3);color:var(--text3);cursor:not-allowed;}
+.refresh-btn svg{flex-shrink:0;}
+.spin{animation:spin 1s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* STATUS BAR */
+.status-bar{padding:8px 32px;background:rgba(14,165,233,.06);
+  border-bottom:1px solid rgba(14,165,233,.15);
+  font-size:11px;color:var(--accent2);display:flex;align-items:center;gap:8px;
+  font-weight:500;}
+.status-bar.hidden{display:none;}
+.status-bar.err{background:rgba(239,68,68,.06);border-color:rgba(239,68,68,.15);color:var(--danger);}
+.status-dot{width:6px;height:6px;border-radius:50%;background:currentColor;
+  animation:pulse 1.2s infinite;}
+@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+
+/* ── MAIN ── */
+.main{position:relative;z-index:1;padding:28px 32px;
+  display:flex;flex-direction:column;gap:24px;}
+
+/* KPI ROW */
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+  padding:16px 18px;position:relative;overflow:hidden;}
+.kpi::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;}
+.kpi.g::after{background:var(--accent);}
+.kpi.b::after{background:var(--accent2);}
+.kpi.w::after{background:var(--warn);}
+.kpi.r::after{background:var(--danger);}
+.kpi.p::after{background:#a855f7;}
+.kpi-label{font-size:9px;text-transform:uppercase;letter-spacing:1.5px;
+  color:var(--text3);margin-bottom:8px;font-weight:700;}
+.kpi-val{font-size:32px;font-weight:800;line-height:1;}
+.kpi.g .kpi-val{color:var(--accent);}
+.kpi.b .kpi-val{color:var(--accent2);}
+.kpi.w .kpi-val{color:var(--warn);}
+.kpi.r .kpi-val{color:var(--danger);}
+.kpi.p .kpi-val{color:#a855f7;}
+.kpi-sub{font-size:9px;color:var(--text3);margin-top:4px;font-weight:500;}
+
+/* TWO COLUMN */
+.two-col{display:grid;grid-template-columns:1fr 380px;gap:20px;}
+
+/* TABLE CARD */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.card-head{padding:14px 18px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;}
+.card-title{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;
+  color:var(--text3);font-weight:700;}
+
+table{width:100%;border-collapse:collapse;}
+thead th{padding:10px 14px;text-align:left;font-size:9px;letter-spacing:1.5px;
+  text-transform:uppercase;color:var(--text3);border-bottom:1px solid var(--border);
+  background:var(--surface2);font-weight:700;white-space:nowrap;}
+tbody td{padding:13px 14px;border-bottom:1px solid rgba(30,40,64,.4);
+  font-size:12px;font-weight:600;vertical-align:middle;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover td{background:rgba(255,255,255,.015);}
+
+.member-cell{display:flex;align-items:center;gap:10px;}
+.av{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0;}
+.m-name{font-size:13px;font-weight:700;}
+.m-role{font-size:9px;color:var(--text3);font-weight:500;}
+
+.num{font-weight:700;}
+.num.g{color:var(--accent);}
+.num.r{color:var(--danger);}
+.num.w{color:var(--warn);}
+.num.b{color:var(--accent2);}
+
+/* SCORE BADGE */
+.score{display:inline-flex;align-items:center;justify-content:center;
+  width:42px;height:24px;border-radius:5px;font-size:11px;font-weight:700;}
+.score.great{background:rgba(0,229,160,.1);color:var(--accent);}
+.score.ok{background:rgba(245,158,11,.1);color:var(--warn);}
+.score.bad{background:rgba(239,68,68,.1);color:var(--danger);}
+
+/* MINI PROGRESS */
+.mini-prog{display:flex;flex-direction:column;gap:3px;}
+.mp-track{height:3px;background:var(--surface3);border-radius:99px;overflow:hidden;}
+.mp-fill{height:100%;border-radius:99px;}
+.mp-nums{font-size:9px;color:var(--text3);font-weight:500;}
+
+/* CHART CARD */
+.chart-wrap{padding:18px;height:100%;display:flex;flex-direction:column;}
+.chart-canvas-wrap{flex:1;position:relative;min-height:220px;}
+
+/* MEMBER DETAIL GRID */
+.detail-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+.d-card{background:var(--surface2);border:1px solid var(--border);
+  border-radius:8px;padding:12px 14px;}
+.d-key{font-size:9px;text-transform:uppercase;letter-spacing:1px;
+  color:var(--text3);margin-bottom:6px;font-weight:700;}
+.d-val{font-size:22px;font-weight:800;line-height:1;}
+
+/* EMPTY / SKELETON */
+.empty{padding:40px;text-align:center;color:var(--text3);font-size:12px;font-weight:500;}
+.skel-row{height:52px;border-bottom:1px solid rgba(30,40,64,.4);
+  background:linear-gradient(90deg,var(--surface2) 25%,var(--surface3) 50%,var(--surface2) 75%);
+  background-size:200% 100%;animation:shim 1.5s infinite;}
+@keyframes shim{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* TABS */
+.tabs{display:flex;gap:4px;padding:14px 18px 0;border-bottom:1px solid var(--border);}
+.tab-btn{padding:7px 14px;border-radius:7px 7px 0 0;border:1px solid transparent;
+  font-family:var(--font);font-size:11px;font-weight:600;color:var(--text2);
+  cursor:pointer;background:transparent;transition:all .15s;margin-bottom:-1px;}
+.tab-btn.active{background:var(--surface2);color:var(--accent);
+  border-color:var(--border);border-bottom-color:var(--surface2);}
+.tab-btn:hover:not(.active){color:var(--text);}
+.tab-pane{display:none;padding:18px;}
+.tab-pane.active{display:block;}
+
+/* TOASTS */
+.toasts{position:fixed;bottom:20px;right:20px;z-index:999;display:flex;flex-direction:column;gap:7px;}
+.toast{background:var(--surface2);border:1px solid var(--border);border-radius:9px;
+  padding:10px 14px;display:flex;align-items:center;gap:9px;font-size:12px;color:var(--text);
+  animation:tIn .3s ease,tOut .3s ease 2.7s forwards;min-width:220px;
+  box-shadow:0 8px 32px rgba(0,0,0,.5);font-weight:500;}
+@keyframes tIn{from{transform:translateX(30px);opacity:0;}}
+@keyframes tOut{to{opacity:0;transform:translateX(8px);}}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div>
+    <div class="logo-mark">DABUD<span>AI</span></div>
+    <div class="logo-sub">Team Analytics</div>
+  </div>
+  <div class="h-divider"></div>
+  <select class="month-select" id="month-select"></select>
+  <div class="h-spacer"></div>
+  <button class="refresh-btn" id="refresh-btn" onclick="loadAll()">
+    <svg id="refresh-ico" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
+      <path d="M14 8A6 6 0 1 1 8 2M8 2l3 3M8 2l3-3" stroke-linecap="round"/>
+    </svg>
+    Оновити дані
+  </button>
+</header>
+
+<div class="status-bar hidden" id="status-bar">
+  <span class="status-dot"></span>
+  <span id="status-text">Завантаження…</span>
+</div>
+
+<div class="main">
+
+  <!-- KPI ROW -->
+  <div class="kpi-row">
+    <div class="kpi g"><div class="kpi-label">Всього задач</div><div class="kpi-val" id="k-total">—</div><div class="kpi-sub">за місяць</div></div>
+    <div class="kpi b"><div class="kpi-label">Виконано</div><div class="kpi-val" id="k-done">—</div><div class="kpi-sub" id="k-done-sub">—</div></div>
+    <div class="kpi w"><div class="kpi-label">В роботі</div><div class="kpi-val" id="k-active">—</div><div class="kpi-sub">активних</div></div>
+    <div class="kpi r"><div class="kpi-label">Прострочено</div><div class="kpi-val" id="k-overdue">—</div><div class="kpi-sub">відкритих</div></div>
+    <div class="kpi p"><div class="kpi-label">On-time %</div><div class="kpi-val" id="k-ontime">—</div><div class="kpi-sub">вчасно закриті</div></div>
+  </div>
+
+  <!-- TABLE + CHART -->
+  <div class="two-col">
+
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">Команда — деталі</span>
+        <span id="last-updated" style="font-size:9px;color:var(--text3);font-weight:500;"></span>
+      </div>
+      <table id="team-table">
+        <thead>
+          <tr>
+            <th>Учасник</th>
+            <th>Всього</th>
+            <th>Виконано</th>
+            <th>В роботі</th>
+            <th>Прострочено</th>
+            <th>On-time %</th>
+            <th>Score</th>
+            <th>Прогрес</th>
+          </tr>
+        </thead>
+        <tbody id="team-tbody">
+          <tr><td colspan="8"><div class="empty">Натисни «Оновити дані» щоб завантажити з ClickUp</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span class="card-title">Виконання по команді</span></div>
+      <div class="chart-wrap">
+        <div class="chart-canvas-wrap">
+          <canvas id="team-chart"></canvas>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- MEMBER TABS -->
+  <div class="card" id="member-tabs-card">
+    <div class="tabs" id="member-tabs"></div>
+    <div id="member-panes"></div>
+  </div>
+
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════
+const CLICKUP_TOKEN = 'pk_266462192_L1K3UEICU6N2DUGSY7HWFP90YMJAPX46';
+
+const TEAM_MEMBERS = [
+  { id: 266462192, name: 'Кирило',  initials: 'КП', role: 'Founder',   color: 'linear-gradient(135deg,#00E5A0,#0EA5E9)' },
+  { id: 82709880,  name: 'Катя',    initials: 'КК', role: 'Marketing', color: 'linear-gradient(135deg,#7c3aed,#0EA5E9)' },
+  { id: 100779346, name: 'Іллі',    initials: 'ІЛ', role: 'Growth',    color: 'linear-gradient(135deg,#FF6B35,#F59E0B)' },
+];
+
+let teamId = null;
+let chartInstance = null;
+let cachedData = {}; // { memberId: metrics }
+
+// ═══════════════════════════════════════════
+// MONTH SELECTOR — останні 12 місяців
+// ═══════════════════════════════════════════
+(function buildMonthSelect() {
+  const sel = document.getElementById('month-select');
+  const now = new Date();
+  const UA_MONTHS = ['Січень','Лютий','Березень','Квітень','Травень','Червень',
+                     'Липень','Серпень','Вересень','Жовтень','Листопад','Грудень'];
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const val = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const opt = document.createElement('option');
+    opt.value = val;
+    opt.textContent = `${UA_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+    if (i === 0) opt.selected = true;
+    sel.appendChild(opt);
+  }
+})();
+
+function getRange() {
+  const val = document.getElementById('month-select').value;
+  const [y, m] = val.split('-').map(Number);
+  const from = new Date(y, m - 1, 1);
+  const to   = new Date(y, m, 0, 23, 59, 59, 999);
+  return { from, to, fromMs: from.getTime(), toMs: to.getTime() };
+}
+
+// ═══════════════════════════════════════════
+// CLICKUP API
+// ═══════════════════════════════════════════
+async function cuFetch(path) {
+  const res = await fetch('https://api.clickup.com/api/v2' + path, {
+    headers: { 'Authorization': CLICKUP_TOKEN }
+  });
+  if (!res.ok) throw new Error(`ClickUp ${res.status}: ${path}`);
+  return res.json();
+}
+
+async function getTeamId() {
+  if (teamId) return teamId;
+  const data = await cuFetch('/team');
+  teamId = data.teams[0].id;
+  return teamId;
+}
+
+// Тягне всі задачі для одного assignee з пагінацією
+async function fetchMemberTasks(memberId) {
+  const tid = await getTeamId();
+  let page = 0, all = [];
+  while (true) {
+    setStatus(`Завантаження задач ${memberName(memberId)} — сторінка ${page + 1}…`);
+    const data = await cuFetch(
+      `/team/${tid}/task?assignees[]=${memberId}&include_closed=true&subtasks=true&page=${page}`
+    );
+    const tasks = data.tasks || [];
+    all = all.concat(tasks);
+    if (tasks.length < 100) break;
+    page++;
+  }
+  return all;
+}
+
+function memberName(id) {
+  return TEAM_MEMBERS.find(m => m.id === id)?.name || id;
+}
+
+// ═══════════════════════════════════════════
+// АНАЛІЗ ЗАДАЧ (локально)
+// ═══════════════════════════════════════════
+function analyzeForRange(tasks, fromMs, toMs) {
+  const now = Date.now();
+  let total = 0, done = 0, active = 0, overdue = 0, onTimeDone = 0;
+
+  for (const t of tasks) {
+    const created  = parseInt(t.date_created) || 0;
+    const closed   = t.date_closed ? parseInt(t.date_closed) : null;
+    const due      = t.due_date    ? parseInt(t.due_date)    : null;
+    const isClosed = t.status && t.status.type === 'closed';
+
+    // Задача потрапляє в діапазон якщо:
+    // створена до кінця діапазону І (ще відкрита АБО закрита після початку)
+    const inRange = created <= toMs && (isClosed ? (closed >= fromMs) : true);
+    if (!inRange) continue;
+
+    total++;
+    if (isClosed) {
+      done++;
+      if (due && closed <= due) onTimeDone++;
+    } else {
+      active++;
+      if (due && due < now) overdue++;
+    }
+  }
+
+  const score = total > 0
+    ? Math.max(0, Math.min(100, Math.round(done/total*100 - overdue/Math.max(total,1)*50)))
+    : 0;
+  const ontimePct = done > 0 ? Math.round(onTimeDone/done*100) : 0;
+
+  return { total, done, active, overdue, onTimeDone, score, ontimePct };
+}
+
+// ═══════════════════════════════════════════
+// LOAD ALL
+// ═══════════════════════════════════════════
+async function loadAll() {
+  const btn = document.getElementById('refresh-btn');
+  const ico = document.getElementById('refresh-ico');
+  btn.disabled = true;
+  ico.classList.add('spin');
+  cachedData = {};
+  showStatusLoad('Підключення до ClickUp…');
+
+  const { fromMs, toMs } = getRange();
+
+  try {
+    for (const member of TEAM_MEMBERS) {
+      const tasks = await fetchMemberTasks(member.id);
+      cachedData[member.id] = {
+        metrics: analyzeForRange(tasks, fromMs, toMs),
+        tasks
+      };
+    }
+    renderAll();
+    hideStatus();
+    toast('✅', 'Дані оновлено з ClickUp');
+    document.getElementById('last-updated').textContent =
+      'Оновлено: ' + new Date().toLocaleTimeString('uk-UA', {hour:'2-digit',minute:'2-digit'});
+  } catch(e) {
+    showStatusErr('Помилка: ' + e.message);
+    toast('❌', e.message);
+  } finally {
+    btn.disabled = false;
+    ico.classList.remove('spin');
+  }
+}
+
+// ═══════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════
+function renderAll() {
+  // Агрегат по всій команді
+  let tot=0,dn=0,act=0,ov=0,otd=0;
+  for (const m of TEAM_MEMBERS) {
+    const mx = cachedData[m.id]?.metrics;
+    if (!mx) continue;
+    tot+=mx.total; dn+=mx.done; act+=mx.active; ov+=mx.overdue; otd+=mx.onTimeDone;
+  }
+  const ontimePct = dn>0?Math.round(otd/dn*100):0;
+
+  set('k-total',   tot);
+  set('k-done',    dn);
+  set('k-done-sub',tot>0?Math.round(dn/tot*100)+'% виконання':'—');
+  set('k-active',  act);
+  set('k-overdue', ov);
+  set('k-ontime',  ontimePct+'%');
+
+  renderTable();
+  renderChart();
+  renderMemberTabs();
+}
+
+function renderTable() {
+  const tbody = document.getElementById('team-tbody');
+  tbody.innerHTML = TEAM_MEMBERS.map(member => {
+    const d = cachedData[member.id];
+    if (!d) return '';
+    const mx = d.metrics;
+    const sc = mx.score;
+    const scCls = sc>=70?'great':sc>=45?'ok':'bad';
+    const donePct = mx.total>0?Math.round(mx.done/mx.total*100):0;
+
+    return `<tr>
+      <td>
+        <div class="member-cell">
+          <div class="av" style="background:${member.color}">${member.initials}</div>
+          <div><div class="m-name">${member.name}</div><div class="m-role">${member.role}</div></div>
+        </div>
+      </td>
+      <td class="num">${mx.total}</td>
+      <td class="num g">${mx.done}</td>
+      <td class="num b">${mx.active}</td>
+      <td class="num ${mx.overdue>0?'r':''}">${mx.overdue}</td>
+      <td class="num ${mx.ontimePct>=80?'g':mx.ontimePct>=50?'w':'r'}">${mx.ontimePct}%</td>
+      <td><span class="score ${scCls}">${sc}</span></td>
+      <td>
+        <div class="mini-prog">
+          <div class="mp-track"><div class="mp-fill" style="width:${donePct}%;background:var(--accent)"></div></div>
+          <div class="mp-nums">${donePct}%</div>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function renderChart() {
+  const labels = TEAM_MEMBERS.map(m => m.name);
+  const done    = TEAM_MEMBERS.map(m => cachedData[m.id]?.metrics.done    || 0);
+  const active  = TEAM_MEMBERS.map(m => cachedData[m.id]?.metrics.active  || 0);
+  const overdue = TEAM_MEMBERS.map(m => cachedData[m.id]?.metrics.overdue || 0);
+
+  if (chartInstance) chartInstance.destroy();
+  const ctx = document.getElementById('team-chart').getContext('2d');
+  chartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label:'Виконано', data:done,    backgroundColor:'rgba(0,229,160,.7)',  borderRadius:4 },
+        { label:'В роботі', data:active,  backgroundColor:'rgba(14,165,233,.6)', borderRadius:4 },
+        { label:'Прострочено',data:overdue,backgroundColor:'rgba(239,68,68,.6)', borderRadius:4 },
+      ]
+    },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ labels:{ color:'#7D8FA8', font:{family:'Montserrat',size:10,weight:'600'} } },
+        tooltip:{ backgroundColor:'#141923', borderColor:'#1E2840', borderWidth:1,
+          titleColor:'#E2E8F5', bodyColor:'#7D8FA8',
+          titleFont:{family:'Montserrat',weight:'700'},bodyFont:{family:'Montserrat'} }
+      },
+      scales:{
+        x:{ stacked:true, grid:{color:'rgba(30,40,64,.5)'}, ticks:{color:'#7D8FA8',font:{family:'Montserrat',size:10,weight:'600'}} },
+        y:{ stacked:true, grid:{color:'rgba(30,40,64,.5)'}, ticks:{color:'#7D8FA8',font:{family:'Montserrat',size:10,weight:'600'}} }
+      }
+    }
+  });
+}
+
+function renderMemberTabs() {
+  const tabsEl  = document.getElementById('member-tabs');
+  const panesEl = document.getElementById('member-panes');
+  tabsEl.innerHTML  = '';
+  panesEl.innerHTML = '';
+
+  TEAM_MEMBERS.forEach((member, idx) => {
+    // tab button
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn' + (idx===0?' active':'');
+    btn.textContent = member.name;
+    btn.onclick = () => {
+      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('pane-'+member.id).classList.add('active');
+    };
+    tabsEl.appendChild(btn);
+
+    // pane
+    const d  = cachedData[member.id];
+    const mx = d?.metrics;
+    const pane = document.createElement('div');
+    pane.className = 'tab-pane' + (idx===0?' active':'');
+    pane.id = 'pane-' + member.id;
+
+    if (!mx) { pane.innerHTML = '<div class="empty">Дані відсутні</div>'; }
+    else {
+      const sc = mx.score;
+      const scCls = sc>=70?'great':sc>=45?'ok':'bad';
+
+      // Recent tasks list (top 10 from range)
+      const { fromMs, toMs } = getRange();
+      const now = Date.now();
+      const rangeTasks = (d.tasks||[]).filter(t => {
+        const created = parseInt(t.date_created)||0;
+        const closed  = t.date_closed?parseInt(t.date_closed):null;
+        const isClosed= t.status&&t.status.type==='closed';
+        return created<=toMs && (isClosed?(closed>=fromMs):true);
+      }).slice(0,10);
+
+      pane.innerHTML = `
+        <div class="detail-grid">
+          <div class="d-card"><div class="d-key">Всього задач</div><div class="d-val">${mx.total}</div></div>
+          <div class="d-card"><div class="d-key">Виконано</div><div class="d-val" style="color:var(--accent)">${mx.done}</div></div>
+          <div class="d-card"><div class="d-key">В роботі</div><div class="d-val" style="color:var(--accent2)">${mx.active}</div></div>
+          <div class="d-card"><div class="d-key">Прострочено</div><div class="d-val" style="color:var(--danger)">${mx.overdue}</div></div>
+          <div class="d-card"><div class="d-key">On-time закриті</div><div class="d-val" style="color:var(--accent)">${mx.onTimeDone}</div></div>
+          <div class="d-card"><div class="d-key">On-time %</div><div class="d-val" style="color:${mx.ontimePct>=80?'var(--accent)':mx.ontimePct>=50?'var(--warn)':'var(--danger)'}">${mx.ontimePct}%</div></div>
+          <div class="d-card"><div class="d-key">% Виконання</div><div class="d-val" style="color:var(--accent2)">${mx.total>0?Math.round(mx.done/mx.total*100):0}%</div></div>
+          <div class="d-card"><div class="d-key">Score</div><div class="d-val"><span class="score ${scCls}" style="font-size:20px;width:auto;padding:0 8px">${sc}</span></div></div>
+        </div>
+        <table>
+          <thead><tr>
+            <th>Задача</th><th>Статус</th><th>Дедлайн</th><th>Закрита</th>
+          </tr></thead>
+          <tbody>
+            ${rangeTasks.length===0
+              ? '<tr><td colspan="4"><div class="empty">Немає задач у цьому діапазоні</div></td></tr>'
+              : rangeTasks.map(t => {
+                  const isClosed = t.status&&t.status.type==='closed';
+                  const due  = t.due_date?new Date(parseInt(t.due_date)).toLocaleDateString('uk-UA'):'—';
+                  const cls  = t.date_closed?new Date(parseInt(t.date_closed)).toLocaleDateString('uk-UA'):'—';
+                  const sCol = isClosed?'var(--accent)':'var(--accent2)';
+                  const sTxt = isClosed?'✓ Виконано':'В роботі';
+                  return `<tr>
+                    <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.name}</td>
+                    <td><span style="color:${sCol};font-size:10px;font-weight:700">${sTxt}</span></td>
+                    <td style="color:var(--text2)">${due}</td>
+                    <td style="color:var(--text3)">${cls}</td>
+                  </tr>`;
+                }).join('')
+            }
+          </tbody>
+        </table>`;
+    }
+    panesEl.appendChild(pane);
+  });
+}
+
+// ═══════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════
+function set(id, val) { const el=document.getElementById(id); if(el) el.textContent=val; }
+function showStatusLoad(msg) {
+  const b=document.getElementById('status-bar');
+  b.className='status-bar'; b.classList.remove('hidden','err');
+  document.getElementById('status-text').textContent=msg;
+}
+function showStatusErr(msg) {
+  const b=document.getElementById('status-bar');
+  b.className='status-bar err';
+  document.getElementById('status-text').textContent=msg;
+}
+function hideStatus() { document.getElementById('status-bar').classList.add('hidden'); }
+function setStatus(msg) { document.getElementById('status-text').textContent=msg; }
+function toast(icon,msg){
+  const w=document.getElementById('toasts');
+  const t=document.createElement('div'); t.className='toast';
+  t.innerHTML=`<span style="font-size:14px">${icon}</span><span>${msg}</span>`;
+  w.appendChild(t); setTimeout(()=>t.remove(),3200);
+}
+</script>
+</body>
+</html>
