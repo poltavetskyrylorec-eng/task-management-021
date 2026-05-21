@@ -514,6 +514,7 @@ const CLICKUP_ASSIGNEE = '266462192';   // Кирило
 let CLICKUP_TEAM_ID = null;              // кешується при першому запиті
 
 // n8n залишається тільки для місячної аналітики з Google Sheets
+const GS_URL = 'https://script.google.com/macros/s/AKfycbyiIwXa_WhiTJuobHeDFIiOonLmNTuSSwuL1pnITteqM6YRoWaSwy9ZwbLhnHmCb1Ms/exec';
 const N8N = {
   month: 'https://dabudai.app.n8n.cloud/webhook/dabudai-month'
 };
@@ -651,13 +652,6 @@ async function loadToday() {
       }
       TASKS = raw.map(normalizeTask).filter(Boolean);
     }
-    renderTasks();
-    hideBanner('today');
-    document.getElementById('last-sync').textContent = 'Sync: ' + new Date().toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'});
-  } catch (e) {
-    showBanner('today','err','Помилка завантаження з ClickUp: ' + e.message);
-  } finally {
-    ico.classList.remove('spin');
   }
 }
 
