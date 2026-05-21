@@ -511,6 +511,7 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
 const CLICKUP_TOKEN = 'pk_266462192_L1K3UEICU6N2DUGSY7HWFP90YMJAPX46';
 const CLICKUP_SPACE_ID = '90158754708'; // спейс Маркетинг
 const CLICKUP_ASSIGNEE = '266462192';   // Кирило
+let CLICKUP_TEAM_ID = null;              // кешується при першому запиті
 
 // n8n залишається тільки для місячної аналітики з Google Sheets
 const N8N = {
@@ -631,11 +632,16 @@ async function loadToday() {
       await new Promise(r => setTimeout(r, 700));
       TASKS = mockTasks();
     } else {
-      // Один запит зі спейсу Маркетинг (open + closed), з пагінацією
+      // Спершу teamId (швидко, кешується)
+      if (!CLICKUP_TEAM_ID) {
+        const teamData = await cuFetch('/team');
+        CLICKUP_TEAM_ID = teamData.teams[0].id;
+      }
+      // Запит через /team/.../task — швидкий, з фільтром по спейсу Маркетинг
       let page = 0, raw = [];
       while (true) {
         const data = await cuFetch(
-          `/space/${CLICKUP_SPACE_ID}/task?assignees[]=${CLICKUP_ASSIGNEE}&include_closed=true&subtasks=false&page=${page}`
+          `/team/${CLICKUP_TEAM_ID}/task?assignees[]=${CLICKUP_ASSIGNEE}&space_ids[]=${CLICKUP_SPACE_ID}&include_closed=true&subtasks=false&page=${page}`
         );
         const tasks = data.tasks || [];
         raw = raw.concat(tasks);
