@@ -611,6 +611,7 @@ function normalizeTask(t) {
 
   return {
     id: t.id,
+    parentId: t.parent || null,
     name: t.name,
     status: isClosed ? 'closed' : 'open',
     bucket,
@@ -684,20 +685,29 @@ function renderBucket(elId, list, type) {
     el.innerHTML = `<div class="empty-state">Немає задач у цій категорії</div>`;
     return;
   }
-  el.innerHTML = list.map(t => {
+  // Групуємо: батьківські задачі + їх підзадачі
+  const parents = list.filter(t => !t.parentId);
+  const childrenMap = {};
+  list.filter(t => t.parentId).forEach(t => {
+    if (!childrenMap[t.parentId]) childrenMap[t.parentId] = [];
+    childrenMap[t.parentId].push(t);
+  });
+
+  function taskCard(t, isChild) {
     const done = t.status === 'closed';
     const dueClass = type==='overdue'?'overdue':type==='today'?'today':'upcoming';
     const priTag = (t.priority==='high'||t.priority==='urgent') ? `<span class="tag hi">${PRI_TAG[t.priority]}</span>` : '';
-    const acts = type==='upcoming'
-      ? `<a class="t-btn" href="${t.url}" target="_blank" title="ClickUp">↗</a>`
-      : `<a class="t-btn" href="${t.url}" target="_blank" title="ClickUp">↗</a>`;
     return `
-      <div class="tcard ${dueClass} ${done?'done':''}" id="card-${t.id}" data-min="${t.mins}" data-status="${t.status}" data-bucket="${t.bucket}">
+      <div class="tcard ${dueClass} ${done?'done':''} ${isChild?'is-subtask':''}"
+           id="card-${t.id}" data-min="${t.mins}" data-status="${t.status}" data-bucket="${t.bucket}"
+           style="${isChild?'margin-left:28px;border-left:2px solid var(--border);':''}">
         <div class="tchk ${done?'checked':''}" onclick="toggleTask('${t.id}')">
           <svg class="chk-ico" width="9" height="9" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#07090E" stroke-width="2.2" stroke-linecap="round"/></svg>
         </div>
         <div class="t-body">
-          <div class="t-name">${t.name}</div>
+          <div class="t-name" style="${isChild?'font-size:12px;':''}">
+            ${isChild?'↳ ':''}${t.name}
+          </div>
           <div class="t-meta">
             <span class="tag ${dueClass}">${t.dueLabel}</span>
             ${priTag}
@@ -705,8 +715,13 @@ function renderBucket(elId, list, type) {
             <span class="tag clickup">ClickUp</span>
           </div>
         </div>
-        <div class="t-acts">${acts}</div>
+        <div class="t-acts"><a class="t-btn" href="${t.url}" target="_blank" title="ClickUp">↗</a></div>
       </div>`;
+  }
+
+  el.innerHTML = parents.map(t => {
+    const children = childrenMap[t.id] || [];
+    return taskCard(t, false) + children.map(c => taskCard(c, true)).join('');
   }).join('');
 }
 
