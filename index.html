@@ -599,7 +599,7 @@ function normalizeTask(t) {
   } else if (due <= upcomingEnd.getTime()) {
     bucket = 'upcoming';
   } else {
-    return null; // надто далеко в майбутньому
+    bucket = 'upcoming';
   }
 
   let dueLabel = 'Без дедлайну';
