@@ -126,6 +126,10 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
 .tag.clickup{color:var(--text3);border-color:var(--border);background:var(--surface2)}
 .tag.hi{color:var(--accent3);border-color:rgba(255,107,53,.3);background:rgba(255,107,53,.07)}
 .tag.time{color:var(--text2);border-color:var(--border);background:var(--surface2)}
+.tag.context-tag{color:var(--text3);border-color:rgba(148,163,184,.25);background:rgba(148,163,184,.07);font-style:italic}
+.tcard.context { opacity:.62; background:var(--surface2); border-style:dashed; }
+.tcard.context:hover { opacity:.8; }
+.tchk-stub { width:19px; height:19px; border-radius:5px; border:1.5px dashed var(--border); flex-shrink:0; margin-top:1px; cursor:not-allowed; }
 .t-acts { display:flex; align-items:center; gap:5px; flex-shrink:0; opacity:0; transition:opacity .15s; }
 .tcard:hover .t-acts { opacity:1; }
 .t-btn { width:26px; height:26px; border-radius:5px; background:var(--surface3); border:1px solid var(--border); cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--text3); transition:all .15s; font-size:11px; text-decoration:none; }
@@ -237,6 +241,7 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
 .dc-prog-track { height:4px; background:var(--surface3); border-radius:99px; overflow:hidden; }
 .dc-prog-fill { height:100%; border-radius:99px; }
 .dc-empty { flex:1; display:flex; align-items:center; justify-content:center; font-size:9px; color:var(--text3); padding:30px 0; font-weight:500; }
+.dc-overdue { background:rgba(239,68,68,.1); border:1px solid rgba(239,68,68,.25); color:var(--danger); font-size:11px; font-weight:700; padding:8px 10px; border-radius:8px; text-align:center; }
 
 /* ══ MONTH ══ */
 .month-top { padding:22px 28px 0; }
@@ -713,6 +718,8 @@ function normalizeTask(t) {
     mins,
     dueMs: due,            // ms або null — потрібно для тижня/місяця/кілець
     dueLabel,
+    contextOnly: !!t.contextOnly,     // чужий батько — лише для дерева, не рахується
+    hasKidsInSet: !!t.hasKidsInSet,   // має підзадачі в наборі → час не рахуємо
     url: t.url || ('https://app.clickup.com/t/' + t.id),
     assignee: 'КП'
   };
@@ -785,7 +792,7 @@ function renderTasks() {
   document.getElementById('cnt-up').textContent = cnt.upcoming;
 
   const badge = document.getElementById('badge-ov');
-  if (badge) badge.textContent = TASKS.filter(t => t.bucket==='overdue' && t.status!=='closed').length;
+  if (badge) badge.textContent = TASKS.filter(t => countsForTasks(t) && t.bucket==='overdue' && t.status!=='closed').length;
 
   updateAnalytics();
 }
@@ -797,6 +804,27 @@ function taskCardHTML(t, depth) {
   const indent = depth > 0 ? `margin-left:${depth*24}px;border-left:2px solid var(--border);` : '';
   const prefix = depth === 1 ? '↳ ' : depth >= 2 ? '↳↳ ' : '';
   const kids = (CHILDREN[t.id] || []).slice().sort((a,b)=>a.name.localeCompare(b.name,'uk'));
+
+  // Контекстна (чужа батьківська) задача: показуємо для дерева, але без чекбокса і без обліку
+  if (t.contextOnly) {
+    return `
+      <div class="tcard context ${dueClass}" id="card-${t.id}" data-status="${t.status}" data-bucket="${t.bucket}" style="${indent}">
+        <div class="tchk-stub" title="Відповідальний — інша людина"></div>
+        <div class="t-body">
+          <div class="t-name" style="${depth>0?'font-size:12px;':''}">${prefix}${t.name}</div>
+          <div class="t-meta">
+            <span class="tag context-tag">Контекст · інший виконавець</span>
+            <span class="tag ${dueClass}">${t.dueLabel}</span>
+          </div>
+        </div>
+        <div class="t-acts"><a class="t-btn" href="${t.url}" target="_blank" title="ClickUp">↗</a></div>
+      </div>
+      ${kids.map(c => taskCardHTML(c, depth+1)).join('')}`;
+  }
+
+  // Якщо час задачі дублюється підзадачами — не показуємо тег часу
+  const timeTag = t.hasKidsInSet ? '' : `<span class="tag time">⏱ ${t.mins}хв</span>`;
+
   return `
     <div class="tcard ${dueClass} ${done?'done':''}" id="card-${t.id}" data-min="${t.mins}" data-status="${t.status}" data-bucket="${t.bucket}" style="${indent}">
       <div class="tchk ${done?'checked':''}" onclick="toggleTask('${t.id}')">
@@ -807,7 +835,7 @@ function taskCardHTML(t, depth) {
         <div class="t-meta">
           <span class="tag ${dueClass}">${t.dueLabel}</span>
           ${priTag}
-          <span class="tag time">⏱ ${t.mins}хв</span>
+          ${timeTag}
           <span class="tag clickup">ClickUp</span>
         </div>
       </div>
@@ -829,9 +857,15 @@ function renderBucket(elId, rootList, type) {
 // TOGGLE — update ClickUp + Sheets
 // ════════════════════════════════════════════
 async function toggleTask(id) {
+  const task = TASKS.find(t => t.id === id);
+  // Контекстну (чужу батьківську) задачу закрити не можна
+  if (task && task.contextOnly) {
+    toast('🔒','Цю задачу закриває інший виконавець');
+    return;
+  }
   const card = document.getElementById('card-' + id);
   const chk = card.querySelector('.tchk');
-  const task = TASKS.find(t => t.id === id);
+  if (!chk) return;
   const wasDone = chk.classList.contains('checked');
 
   // optimistic UI
@@ -894,6 +928,11 @@ function setRing(circleId, pctId, subId, list, baseColor){
   document.getElementById(subId).textContent = done + ' / ' + list.length;
 }
 
+// Чи рахувати задачу в КІЛЬКІСТЬ/ВІДСОТКИ (мої задачі; контекстні чужі батьки — ні)
+function countsForTasks(t){ return !t.contextOnly; }
+// Чи рахувати ЧАС задачі (моя + листок: без підзадач у наборі; контекстні — ні)
+function countsForTime(t){ return !t.contextOnly && !t.hasKidsInSet; }
+
 function updateAnalytics() {
   // межі поточного тижня
   const wkStart = MON_DATE.getTime();
@@ -904,8 +943,13 @@ function updateAnalytics() {
   let done=0,total=0,doneMins=0,totalMins=0,overdueOpen=0;
   const pri = {urgent:0,high:0,normal:0,low:0};
   TASKS.forEach(t => {
-    total++; totalMins += t.mins;
-    if (t.status==='closed') { done++; doneMins += t.mins; }
+    if (!countsForTasks(t)) return;         // пропускаємо контекстних чужих батьків
+    total++;
+    if (countsForTime(t)) totalMins += t.mins;   // час лише з листків
+    if (t.status==='closed') {
+      done++;
+      if (countsForTime(t)) doneMins += t.mins;
+    }
     if (t.bucket==='overdue' && t.status!=='closed') overdueOpen++;
     if (pri[t.priority]!==undefined && t.status!=='closed') pri[t.priority]++;
   });
@@ -914,7 +958,7 @@ function updateAnalytics() {
   const pctH = totalMins>0?Math.round(doneMins/totalMins*100):0;
   const hD=(doneMins/60).toFixed(1), hL=(leftMins/60).toFixed(1), hT=(totalMins/60).toFixed(1);
 
-  // ── ВЕРХНІ МЕТРИКИ (вся вибірка) ──
+  // ── ВЕРХНІ МЕТРИКИ ──
   document.getElementById('p-done').textContent=done;
   document.getElementById('p-total').textContent=total;
   document.getElementById('p-over').textContent=overdueOpen;
@@ -935,17 +979,15 @@ function updateAnalytics() {
   document.getElementById('d-pct-h').textContent=pctH+'%';
   document.getElementById('d-bar-h').style.width=pctH+'%';
 
-  // ── ТРИ КІЛЬЦЯ ──
-  // 1) Сьогодні: дедлайн саме на сьогодні
-  const ringToday = TASKS.filter(t => t.dueMs && t.dueMs>=todayStart.getTime() && t.dueMs<=todayEnd.getTime());
-  // 2) Цей тиждень: дедлайн у межах Пн–Нд поточного тижня АБО прострочені, що тягнуться на цей тиждень
+  // ── ТРИ КІЛЬЦЯ (контекстні виключені) ──
+  const ringToday = TASKS.filter(t => countsForTasks(t) && t.dueMs && t.dueMs>=todayStart.getTime() && t.dueMs<=todayEnd.getTime());
   const ringWeek = TASKS.filter(t => {
-    if (t.dueMs && t.dueMs>=wkStart && t.dueMs<=wkEnd) return true;       // дедлайн у цьому тижні
-    if (t.bucket==='overdue' && t.status!=='closed') return true;        // прострочене висить зараз
+    if (!countsForTasks(t)) return false;
+    if (t.dueMs && t.dueMs>=wkStart && t.dueMs<=wkEnd) return true;
+    if (t.bucket==='overdue' && t.status!=='closed') return true;
     return false;
   });
-  // 3) Усі прострочені + сьогоднішні
-  const ringAll = TASKS.filter(t => t.bucket==='overdue' || t.bucket==='today');
+  const ringAll = TASKS.filter(t => countsForTasks(t) && (t.bucket==='overdue' || t.bucket==='today'));
 
   setRing('ring-today','ring-today-pct','ring-today-sub', ringToday, 'var(--accent)');
   setRing('ring-week','ring-week-pct','ring-week-sub',   ringWeek);
@@ -1010,10 +1052,10 @@ function buildWeek(){
   const todayMs = todayStart.getTime();
 
   // ── ПЕРЕНЕСЕНО (OVERDUE) на цей тиждень ──
-  // незакриті задачі, чий дедлайн був ДО початку цього тижня
-  const carryover = TASKS.filter(t => t.status!=='closed' && t.dueMs && t.dueMs < mon.getTime());
+  // незакриті МОЇ задачі, чий дедлайн був ДО початку цього тижня
+  const carryover = TASKS.filter(t => countsForTasks(t) && t.status!=='closed' && t.dueMs && t.dueMs < mon.getTime());
   const coTasks = carryover.length;
-  const coMins = carryover.reduce((s,t)=>s+t.mins,0);
+  const coMins = carryover.filter(t=>countsForTime(t)).reduce((s,t)=>s+t.mins,0);
   const coEl = document.getElementById('week-carryover');
   if (coTasks > 0) {
     coEl.classList.remove('hidden');
@@ -1042,14 +1084,20 @@ function buildWeek(){
     const dayStart = dayD.getTime();
     const dayEnd = dayStart + 86399999;
 
-    // задачі цього дня = ті, чий дедлайн припадає на цей день
-    const dayTasks = TASKS.filter(t => t.dueMs && t.dueMs>=dayStart && t.dueMs<=dayEnd);
+    // задачі цього дня = мої (не контекстні) задачі з дедлайном на цей день
+    const dayTasks = TASKS.filter(t => countsForTasks(t) && t.dueMs && t.dueMs>=dayStart && t.dueMs<=dayEnd);
     const dCnt = dayTasks.filter(t=>t.status==='closed').length;
-    const dM   = dayTasks.filter(t=>t.status==='closed').reduce((s,t)=>s+t.mins,0);
-    const aM   = dayTasks.reduce((s,t)=>s+t.mins,0);
+    // час рахуємо лише з листків (без батьків, чий час дублює дітей)
+    const dM   = dayTasks.filter(t=>t.status==='closed' && countsForTime(t)).reduce((s,t)=>s+t.mins,0);
+    const aM   = dayTasks.filter(t=>countsForTime(t)).reduce((s,t)=>s+t.mins,0);
     const pctDay  = dayTasks.length>0?Math.round(dCnt/dayTasks.length*100):0;
     const pctHDay = aM>0?Math.round(dM/aM*100):0;
     const leftM = aM-dM;
+
+    // прострочені цього дня (незакриті, дедлайн уже минув) — мої, час з листків
+    const dayOverdue = TASKS.filter(t => countsForTasks(t) && t.status!=='closed' && t.dueMs && t.dueMs>=dayStart && t.dueMs<=dayEnd && t.dueMs < todayMs);
+    const overCnt = dayOverdue.length;
+    const overMins = dayOverdue.filter(t=>countsForTime(t)).reduce((s,t)=>s+t.mins,0);
 
     tDone+=dCnt; tAll+=dayTasks.length; tDoneM+=dM; tAllM+=aM;
     if(d<=todayIdx){ pDone+=dCnt; pAll+=dayTasks.length; pDoneM+=dM; pAllM+=aM; }
@@ -1067,11 +1115,12 @@ function buildWeek(){
         <div class="dc-num">${dayD.getDate()}</div>
       </div>
       <div class="dc-body">
-        ${dayTasks.length===0?'<div class="dc-empty">Немає задач</div>':`
+        ${(dayTasks.length===0 && overCnt===0)?'<div class="dc-empty">Немає задач</div>':`
         <div class="dc-pct-big">
           <div class="dc-pct-num" style="color:${pctCol}">${pctDay}%</div>
           <div class="dc-pct-label">виконання</div>
         </div>
+        ${overCnt>0?`<div class="dc-overdue">⚠ Прострочено: <b>${overCnt}</b> · ${(overMins/60).toFixed(1)}г</div>`:''}
         <div class="dc-grid">
           <div class="dc-cell"><div class="dc-cell-key">Задачі</div><div class="dc-cell-val green">${dCnt}/${dayTasks.length}</div></div>
           <div class="dc-cell"><div class="dc-cell-key">Год. вик.</div><div class="dc-cell-val blue">${(dM/60).toFixed(1)}г</div></div>
@@ -1120,15 +1169,15 @@ async function buildMonth(){
   const todayStart = new Date(); todayStart.setHours(0,0,0,0);
   const todayEnd = new Date(); todayEnd.setHours(23,59,59,999);
 
-  // задачі місяця = дедлайн у межах місяця
-  const monthTasks = TASKS.filter(t => t.dueMs && t.dueMs>=monthStart.getTime() && t.dueMs<=monthEnd.getTime());
+  // задачі місяця = мої (не контекстні) з дедлайном у межах місяця
+  const monthTasks = TASKS.filter(t => countsForTasks(t) && t.dueMs && t.dueMs>=monthStart.getTime() && t.dueMs<=monthEnd.getTime());
 
   const total = monthTasks.length;
   const done = monthTasks.filter(t=>t.status==='closed').length;
   const pct = total>0?Math.round(done/total*100):0;
 
   // прострочено (відкриті прострочені, що тягнуться далі)
-  const overdue = TASKS.filter(t=>t.bucket==='overdue' && t.status!=='closed').length;
+  const overdue = TASKS.filter(t=>countsForTasks(t) && t.bucket==='overdue' && t.status!=='closed').length;
   // не виконано = відкриті задачі місяця
   const missed = monthTasks.filter(t=>t.status!=='closed').length;
 
@@ -1137,9 +1186,9 @@ async function buildMonth(){
   const mtdDone = mtdTasks.filter(t=>t.status==='closed').length;
   const mtdPct = mtdTasks.length>0?Math.round(mtdDone/mtdTasks.length*100):0;
 
-  // години
-  const totalMins = monthTasks.reduce((s,t)=>s+t.mins,0);
-  const doneMins = monthTasks.filter(t=>t.status==='closed').reduce((s,t)=>s+t.mins,0);
+  // години — лише з листків (без подвійного рахунку батьків)
+  const totalMins = monthTasks.filter(t=>countsForTime(t)).reduce((s,t)=>s+t.mins,0);
+  const doneMins = monthTasks.filter(t=>t.status==='closed' && countsForTime(t)).reduce((s,t)=>s+t.mins,0);
   const hoursPct = totalMins>0?Math.round(doneMins/totalMins*100):0;
 
   // ── зведення (4 картки) ──
@@ -1168,7 +1217,7 @@ async function buildMonth(){
     const wStart = new Date(cur); wStart.setHours(0,0,0,0);
     const wEnd = new Date(cur); wEnd.setDate(cur.getDate()+6); wEnd.setHours(23,59,59,999);
 
-    const inWeek = TASKS.filter(t=>t.dueMs && t.dueMs>=wStart.getTime() && t.dueMs<=wEnd.getTime());
+    const inWeek = TASKS.filter(t=>countsForTasks(t) && t.dueMs && t.dueMs>=wStart.getTime() && t.dueMs<=wEnd.getTime());
     const wDone = inWeek.filter(t=>t.status==='closed').length;
     const wPct = inWeek.length>0?Math.round(wDone/inWeek.length*100):0;
 
@@ -1176,7 +1225,7 @@ async function buildMonth(){
     // які станом на зараз ще висять (прострочені) — і цей тиждень містить сьогодні або майбутній
     const isCurrentOrFuture = wEnd.getTime() >= todayStart.getTime();
     const carried = isCurrentOrFuture
-      ? TASKS.filter(t=>t.status!=='closed' && t.dueMs && t.dueMs < wStart.getTime()).length
+      ? TASKS.filter(t=>countsForTasks(t) && t.status!=='closed' && t.dueMs && t.dueMs < wStart.getTime()).length
       : 0;
 
     const wn = getWN(wStart);
