@@ -572,21 +572,20 @@ function normalizeTask(t) {
   const todayStart = new Date(); todayStart.setHours(0,0,0,0);
   const todayEnd   = new Date(); todayEnd.setHours(23,59,59,999);
 
-  const isClosed = t.status === 'closed';
+  const isClosed = t.statusType === 'closed';
 
   // due_date приходить як ISO-рядок ("2026-05-28T21:00:00.000Z").
   // Підтримуємо також число в мс/секундах на випадок іншого формату.
   let due = null;
-  if (t.due_date !== null && t.due_date !== undefined && t.due_date !== '') {
-    if (typeof t.due_date === 'number') {
-      due = t.due_date > 0 && t.due_date < 1e12 ? t.due_date * 1000 : t.due_date;
+  if (t.dueMs !== null && t.dueMs !== undefined && t.dueMs !== '') {
+  if (typeof t.dueMs === 'number') {
+    due = t.dueMs > 0 && t.dueMs < 1e12 ? t.dueMs * 1000 : t.dueMs;
+  } else {
+    const parsed = Date.parse(t.dueMs);
+    if (!isNaN(parsed)) {
+      due = parsed;
     } else {
-      const parsed = Date.parse(t.due_date);            // ISO рядок
-      if (!isNaN(parsed)) {
-        due = parsed;
-      } else {
-        const n = parseInt(t.due_date, 10);             // числовий рядок
-        if (!isNaN(n)) due = (n > 0 && n < 1e12) ? n * 1000 : n;
+      const n = parseInt(t.dueMs, 10);
       }
     }
   }
@@ -611,7 +610,7 @@ function normalizeTask(t) {
     dueLabel = d < 0 ? d + ' дн.' : d === 0 ? 'Сьогодні' : d === 1 ? 'Завтра' : '+' + d + ' дн.';
   }
 
-  const minsRaw = t.time_estimate_mins;
+  const minsRaw = t.mins;
   const mins = (minsRaw !== undefined && minsRaw !== null && !isNaN(parseInt(minsRaw,10)))
     ? parseInt(minsRaw,10) : 30;
 
