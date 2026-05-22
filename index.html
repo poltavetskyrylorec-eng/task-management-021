@@ -150,9 +150,9 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
 .rstat-val.c-green{color:var(--accent)} .rstat-val.c-blue{color:var(--accent2)} .rstat-val.c-orange{color:var(--accent3)}
 .rstat-label { font-size:9px; color:var(--text3); font-weight:600; }
 
-.rings3 { display:flex; justify-content:space-between; gap:8px; margin-bottom:14px; }
+.rings3 { display:flex; justify-content:space-between; gap:6px; margin-bottom:14px; }
 .ring3 { display:flex; flex-direction:column; align-items:center; gap:5px; flex:1; }
-.ring3-circle { position:relative; width:92px; height:92px; }
+.ring3-circle { position:relative; width:74px; height:74px; }
 .ring3-center { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
 .ring3-label { font-size:9px; color:var(--text2); font-weight:700; text-align:center; line-height:1.15; }
 .ring3-sub { font-size:9px; color:var(--text3); font-weight:600; }
@@ -223,6 +223,7 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
 .dc-prog-track { height:4px; background:var(--surface3); border-radius:99px; overflow:hidden; }
 .dc-prog-fill { height:100%; border-radius:99px; }
 .dc-empty { flex:1; display:flex; align-items:center; justify-content:center; font-size:9px; color:var(--text3); padding:30px 0; font-weight:500; }
+.dc-overdue { background:rgba(239,68,68,.1); border:1px solid rgba(239,68,68,.25); color:var(--danger); font-size:11px; font-weight:700; padding:8px 10px; border-radius:8px; text-align:center; }
 
 /* ══ MONTH ══ */
 .month-top { padding:22px 28px 0; }
@@ -1003,6 +1004,9 @@ function buildWeek(){
 
     // задачі цього дня = ті, чий дедлайн припадає на цей день
     const dayTasks = TASKS.filter(t => t.dueMs && t.dueMs>=dayStart && t.dueMs<=dayEnd);
+    const dayOverdue = dayTasks.filter(t => t.status!=='closed' && t.dueMs < todayStart.getTime());
+    const overCnt = dayOverdue.length;
+    const overMins = dayOverdue.reduce((s,t)=>s+t.mins,0);
     const dCnt = dayTasks.filter(t=>t.status==='closed').length;
     const dM   = dayTasks.filter(t=>t.status==='closed').reduce((s,t)=>s+t.mins,0);
     const aM   = dayTasks.reduce((s,t)=>s+t.mins,0);
@@ -1026,11 +1030,12 @@ function buildWeek(){
         <div class="dc-num">${dayD.getDate()}</div>
       </div>
       <div class="dc-body">
-        ${dayTasks.length===0?'<div class="dc-empty">Немає задач</div>':`
+        ${(dayTasks.length===0 && overCnt===0)?'<div class="dc-empty">Немає задач</div>':`
         <div class="dc-pct-big">
           <div class="dc-pct-num" style="color:${pctCol}">${pctDay}%</div>
           <div class="dc-pct-label">виконання</div>
         </div>
+        ${overCnt>0?`<div class="dc-overdue">⚠ Прострочено: <b>${overCnt}</b> · ${(overMins/60).toFixed(1)}г</div>`:''}
         <div class="dc-grid">
           <div class="dc-cell"><div class="dc-cell-key">Задачі</div><div class="dc-cell-val green">${dCnt}/${dayTasks.length}</div></div>
           <div class="dc-cell"><div class="dc-cell-key">Год. вик.</div><div class="dc-cell-val blue">${(dM/60).toFixed(1)}г</div></div>
