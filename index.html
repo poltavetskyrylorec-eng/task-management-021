@@ -150,6 +150,15 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
 .rstat-val.c-green{color:var(--accent)} .rstat-val.c-blue{color:var(--accent2)} .rstat-val.c-orange{color:var(--accent3)}
 .rstat-label { font-size:9px; color:var(--text3); font-weight:600; }
 
+.rings3 { display:flex; justify-content:space-between; gap:8px; margin-bottom:14px; }
+.ring3 { display:flex; flex-direction:column; align-items:center; gap:5px; flex:1; }
+.ring3-circle { position:relative; width:92px; height:92px; }
+.ring3-center { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
+.ring3-label { font-size:9px; color:var(--text2); font-weight:700; text-align:center; line-height:1.15; }
+.ring3-sub { font-size:9px; color:var(--text3); font-weight:600; }
+.ring3-stats { display:flex; justify-content:space-around; gap:8px; padding-top:12px; border-top:1px solid var(--border); }
+.ring3-stats .rstat { align-items:center; }
+
 .assignee-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
 .assignee-row:last-child { margin-bottom:0; }
 .a-av { width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:9px; font-weight:700; color:#fff; flex-shrink:0; }
@@ -186,26 +195,26 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
 .wkpi-track { height:4px; background:var(--surface3); border-radius:99px; overflow:hidden; }
 .wkpi-fill { height:100%; border-radius:99px; transition:width .7s cubic-bezier(.4,0,.2,1); }
 
-.week-days { padding:20px 28px 28px; display:grid; grid-template-columns:repeat(7,1fr); gap:12px; }
+.week-days { padding:20px 28px 28px; display:grid; grid-template-columns:repeat(5,1fr); gap:16px; }
 .day-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; overflow:hidden; display:flex; flex-direction:column; }
 .day-card.is-today { border-color:rgba(0,229,160,.35); box-shadow:0 0 0 1px rgba(0,229,160,.1); }
-.day-card.is-past { opacity:.6; }
-.day-card.is-future { opacity:.75; }
-.dc-head { padding:12px 14px 10px; border-bottom:1px solid var(--border); }
-.dc-dow { font-size:9px; text-transform:uppercase; letter-spacing:1px; color:var(--text3); margin-bottom:3px; font-weight:700; }
-.dc-num { font-size:22px; font-weight:800; line-height:1; }
+.day-card.is-past { opacity:.78; }
+.day-card.is-future { opacity:.9; }
+.dc-head { padding:16px 18px 13px; border-bottom:1px solid var(--border); }
+.dc-dow { font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text3); margin-bottom:4px; font-weight:700; }
+.dc-num { font-size:26px; font-weight:800; line-height:1; }
 .day-card.is-today .dc-num { color:var(--accent); }
 .day-card.is-today .dc-dow { color:var(--accent); }
-.dc-body { flex:1; padding:12px 14px; display:flex; flex-direction:column; gap:12px; }
-.dc-pct-big { text-align:center; padding:6px 0; }
-.dc-pct-num { font-size:30px; font-weight:800; line-height:1; }
-.dc-pct-label { font-size:9px; color:var(--text3); margin-top:3px; font-weight:600; }
+.dc-body { flex:1; padding:16px 18px; display:flex; flex-direction:column; gap:15px; }
+.dc-pct-big { text-align:center; padding:8px 0; }
+.dc-pct-num { font-size:36px; font-weight:800; line-height:1; }
+.dc-pct-label { font-size:10px; color:var(--text3); margin-top:4px; font-weight:600; }
 
 /* TWO-ROW grid for day stats */
-.dc-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-.dc-cell { background:var(--surface2); border:1px solid var(--border); border-radius:7px; padding:8px 9px; }
-.dc-cell-key { font-size:8px; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; margin-bottom:3px; font-weight:700; }
-.dc-cell-val { font-size:14px; font-weight:800; line-height:1; }
+.dc-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+.dc-cell { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:10px 11px; }
+.dc-cell-key { font-size:9px; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px; font-weight:700; }
+.dc-cell-val { font-size:16px; font-weight:800; line-height:1; }
 .dc-cell-val.green{color:var(--accent)} .dc-cell-val.orange{color:var(--accent3)} .dc-cell-val.blue{color:var(--accent2)}
 
 .dc-prog-wrap { display:flex; flex-direction:column; gap:7px; }
@@ -228,7 +237,18 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
 .ms-val { font-size:38px; font-weight:800; line-height:1; margin-bottom:4px; }
 .ms-card.g .ms-val{color:var(--accent)} .ms-card.b .ms-val{color:var(--accent2)} .ms-card.w .ms-val{color:var(--warn)} .ms-card.r .ms-val{color:var(--danger)}
 .ms-sub { font-size:9px; color:var(--text3); font-weight:500; }
-.month-viz { display:grid; grid-template-columns:1fr 320px; gap:14px; }
+
+/* ── MONTH PROGRESS BARS ── */
+.month-bars { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+.mbar { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 18px; }
+.mbar-head { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px; gap:8px; }
+.mbar-label { font-size:10px; color:var(--text3); font-weight:600; line-height:1.2; }
+.mbar-pct { font-size:20px; font-weight:800; line-height:1; }
+.mbar-track { height:7px; background:var(--surface3); border-radius:99px; overflow:hidden; }
+.mbar-fill { height:100%; border-radius:99px; transition:width .4s; }
+.mbar-sub { font-size:9px; color:var(--text3); font-weight:500; margin-top:7px; }
+
+.month-viz { display:grid; grid-template-columns:1fr 360px; gap:14px; }
 .chart-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; }
 .chart-head { font-size:9px; text-transform:uppercase; letter-spacing:1.5px; color:var(--text3); margin-bottom:24px; font-weight:700; }
 .chart-area { display:flex; align-items:flex-end; gap:6px; height:140px; }
@@ -381,25 +401,48 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
     </div>
 
     <div class="right-col">
-      <!-- BIGGER RING -->
+      <!-- THREE RINGS -->
       <div class="widget">
-        <div class="widget-title">Прогрес дня</div>
-        <div class="ring-row">
-          <div style="position:relative;width:120px;height:120px;flex-shrink:0;">
-            <svg width="120" height="120" viewBox="0 0 120 120" style="transform:rotate(-90deg)">
-              <circle cx="60" cy="60" r="50" fill="none" stroke="var(--surface3)" stroke-width="10"/>
-              <circle id="ring-circle" cx="60" cy="60" r="50" fill="none" stroke="var(--accent)" stroke-width="10" stroke-dasharray="314.2" stroke-dashoffset="314.2" stroke-linecap="round"/>
-            </svg>
-            <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
-              <div id="ring-pct" style="font-size:26px;font-weight:800;color:var(--accent);line-height:1;">0%</div>
-              <div style="font-size:9px;color:var(--text3);font-weight:600;margin-top:2px;">виконання</div>
+        <div class="widget-title">Прогрес виконання</div>
+        <div class="rings3">
+          <div class="ring3">
+            <div class="ring3-circle">
+              <svg width="92" height="92" viewBox="0 0 92 92" style="transform:rotate(-90deg)">
+                <circle cx="46" cy="46" r="38" fill="none" stroke="var(--surface3)" stroke-width="9"/>
+                <circle id="ring-today" cx="46" cy="46" r="38" fill="none" stroke="var(--accent)" stroke-width="9" stroke-dasharray="238.8" stroke-dashoffset="238.8" stroke-linecap="round"/>
+              </svg>
+              <div class="ring3-center"><div id="ring-today-pct" style="font-size:19px;font-weight:800;color:var(--accent);line-height:1;">0%</div></div>
             </div>
+            <div class="ring3-label">Сьогодні</div>
+            <div class="ring3-sub" id="ring-today-sub">0 / 0</div>
           </div>
-          <div class="ring-stats">
-            <div class="rstat"><div class="rstat-val c-green" id="r-done">0</div><div class="rstat-label">Виконано задач</div></div>
-            <div class="rstat"><div class="rstat-val c-blue" id="r-hdone">0г</div><div class="rstat-label">Годин виконано</div></div>
-            <div class="rstat"><div class="rstat-val c-orange" id="r-hleft">0г</div><div class="rstat-label">Годин залишилось</div></div>
+          <div class="ring3">
+            <div class="ring3-circle">
+              <svg width="92" height="92" viewBox="0 0 92 92" style="transform:rotate(-90deg)">
+                <circle cx="46" cy="46" r="38" fill="none" stroke="var(--surface3)" stroke-width="9"/>
+                <circle id="ring-week" cx="46" cy="46" r="38" fill="none" stroke="var(--accent2)" stroke-width="9" stroke-dasharray="238.8" stroke-dashoffset="238.8" stroke-linecap="round"/>
+              </svg>
+              <div class="ring3-center"><div id="ring-week-pct" style="font-size:19px;font-weight:800;color:var(--accent2);line-height:1;">0%</div></div>
+            </div>
+            <div class="ring3-label">Цей тиждень</div>
+            <div class="ring3-sub" id="ring-week-sub">0 / 0</div>
           </div>
+          <div class="ring3">
+            <div class="ring3-circle">
+              <svg width="92" height="92" viewBox="0 0 92 92" style="transform:rotate(-90deg)">
+                <circle cx="46" cy="46" r="38" fill="none" stroke="var(--surface3)" stroke-width="9"/>
+                <circle id="ring-all" cx="46" cy="46" r="38" fill="none" stroke="var(--warn)" stroke-width="9" stroke-dasharray="238.8" stroke-dashoffset="238.8" stroke-linecap="round"/>
+              </svg>
+              <div class="ring3-center"><div id="ring-all-pct" style="font-size:19px;font-weight:800;color:var(--warn);line-height:1;">0%</div></div>
+            </div>
+            <div class="ring3-label">Прострочені + сьогодні</div>
+            <div class="ring3-sub" id="ring-all-sub">0 / 0</div>
+          </div>
+        </div>
+        <div class="ring3-stats">
+          <div class="rstat"><div class="rstat-val c-green" id="r-done">0</div><div class="rstat-label">Виконано задач</div></div>
+          <div class="rstat"><div class="rstat-val c-blue" id="r-hdone">0г</div><div class="rstat-label">Годин виконано</div></div>
+          <div class="rstat"><div class="rstat-val c-orange" id="r-hleft">0г</div><div class="rstat-label">Годин залишилось</div></div>
         </div>
       </div>
       <div class="widget">
@@ -429,9 +472,9 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
         <div class="week-top-title" id="w-title">Тиждень —</div>
       </div>
       <div class="week-nav">
-        <button class="w-nav-btn">‹</button>
+        <button class="w-nav-btn" onclick="changeWeek(-1)">‹</button>
         <span class="w-range" id="w-range">—</span>
-        <button class="w-nav-btn">›</button>
+        <button class="w-nav-btn" onclick="changeWeek(1)">›</button>
       </div>
     </div>
     <div class="week-kpi-row">
@@ -463,8 +506,28 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
       <div class="ms-card g"><div class="ms-label">Виконано задач</div><div class="ms-val" id="ms-done">—</div><div class="ms-sub" id="ms-done-sub">—</div></div>
       <div class="ms-card b"><div class="ms-label">% Виконання</div><div class="ms-val" id="ms-pct">—</div><div class="ms-sub">ціль: 80%</div></div>
       <div class="ms-card w"><div class="ms-label">Прострочено</div><div class="ms-val" id="ms-over">—</div><div class="ms-sub">перенесено далі</div></div>
-      <div class="ms-card r"><div class="ms-label">Не виконано</div><div class="ms-val" id="ms-missed">—</div><div class="ms-sub">скасовано</div></div>
+      <div class="ms-card r"><div class="ms-label">Не виконано</div><div class="ms-val" id="ms-missed">—</div><div class="ms-sub">відкриті задачі</div></div>
     </div>
+
+    <!-- ПРОГРЕС-БАРИ ПО МІСЯЦЮ -->
+    <div class="month-bars">
+      <div class="mbar">
+        <div class="mbar-head"><span class="mbar-label">Виконання плану за весь місяць</span><span class="mbar-pct" id="mbar-total-pct">0%</span></div>
+        <div class="mbar-track"><div class="mbar-fill fill-tasks" id="mbar-total" style="width:0%"></div></div>
+        <div class="mbar-sub" id="mbar-total-sub">—</div>
+      </div>
+      <div class="mbar">
+        <div class="mbar-head"><span class="mbar-label">Виконання від початку місяця до сьогодні</span><span class="mbar-pct" id="mbar-mtd-pct">0%</span></div>
+        <div class="mbar-track"><div class="mbar-fill fill-hours" id="mbar-mtd" style="width:0%"></div></div>
+        <div class="mbar-sub" id="mbar-mtd-sub">—</div>
+      </div>
+      <div class="mbar">
+        <div class="mbar-head"><span class="mbar-label">Години: виконано від плану місяця</span><span class="mbar-pct" id="mbar-hours-pct">0%</span></div>
+        <div class="mbar-track"><div class="mbar-fill fill-tasks" id="mbar-hours" style="width:0%"></div></div>
+        <div class="mbar-sub" id="mbar-hours-sub">—</div>
+      </div>
+    </div>
+
     <div class="month-viz">
       <div class="chart-card">
         <div class="chart-head">Виконання по тижнях, %</div>
@@ -472,7 +535,7 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
       </div>
       <div class="week-table-card">
         <table class="wt">
-          <thead><tr><th>Тиждень</th><th>Вик.</th><th>%</th><th>Статус</th></tr></thead>
+          <thead><tr><th>Тиждень</th><th>План</th><th>Викон.</th><th>Перенес.</th><th>Статус</th></tr></thead>
           <tbody id="month-table-body"></tbody>
         </table>
       </div>
@@ -574,18 +637,19 @@ function normalizeTask(t) {
 
   const isClosed = t.statusType === 'closed';
 
-  // due_date приходить як ISO-рядок ("2026-05-28T21:00:00.000Z").
-  // Підтримуємо також число в мс/секундах на випадок іншого формату.
+  // Бекенд (normalizeCuTask) віддає dueMs у мілісекундах (число) або null.
+  // Захист: підтримуємо також секунди та ISO-рядок на всякий випадок.
   let due = null;
   if (t.dueMs !== null && t.dueMs !== undefined && t.dueMs !== '') {
-  if (typeof t.dueMs === 'number') {
-    due = t.dueMs > 0 && t.dueMs < 1e12 ? t.dueMs * 1000 : t.dueMs;
-  } else {
-    const parsed = Date.parse(t.dueMs);
-    if (!isNaN(parsed)) {
-      due = parsed;
+    if (typeof t.dueMs === 'number') {
+      due = (t.dueMs > 0 && t.dueMs < 1e12) ? t.dueMs * 1000 : t.dueMs;
     } else {
       const n = parseInt(t.dueMs, 10);
+      if (!isNaN(n) && n > 0) {
+        due = n < 1e12 ? n * 1000 : n;
+      } else {
+        const parsed = Date.parse(t.dueMs);
+        if (!isNaN(parsed)) due = parsed;
       }
     }
   }
@@ -622,6 +686,7 @@ function normalizeTask(t) {
     bucket,
     priority: t.priority || 'normal',
     mins,
+    dueMs: due,            // ms або null — потрібно для тижня/місяця/кілець
     dueLabel,
     url: t.url || ('https://app.clickup.com/t/' + t.id),
     assignee: 'КП'
@@ -646,6 +711,9 @@ async function loadToday() {
     hideBanner('today');
     document.getElementById('last-sync').textContent =
       'Оновлено о ' + new Date().toLocaleTimeString('uk-UA', {hour:'2-digit', minute:'2-digit'});
+    // якщо відкрита вкладка тижня/місяця — перерахувати з новими задачами
+    if (document.getElementById('view-week').classList.contains('active'))  buildWeek();
+    if (document.getElementById('view-month').classList.contains('active')) buildMonth();
   } catch(e) {
     showBanner('today','err','Помилка завантаження: ' + e.message);
   } finally {
@@ -777,9 +845,37 @@ function isoToday(){ return `${NOW.getFullYear()}-${String(NOW.getMonth()+1).pad
 // ANALYTICS (today)
 // ════════════════════════════════════════════
 const DONUT_2PI = 2*Math.PI*33;
-const RING_2PI  = 2*Math.PI*50;
+const RING3_2PI = 2*Math.PI*38;
+
+function colFor(pct){ return pct>=80?'var(--accent)':pct>=50?'var(--accent2)':'var(--warn)'; }
+
+// рахує % виконаних у наборі задач
+function pctDone(list){
+  if(!list.length) return 0;
+  const d = list.filter(t=>t.status==='closed').length;
+  return Math.round(d/list.length*100);
+}
+
+function setRing(circleId, pctId, subId, list, baseColor){
+  const pct = pctDone(list);
+  const done = list.filter(t=>t.status==='closed').length;
+  const c = document.getElementById(circleId);
+  c.setAttribute('stroke-dashoffset', (RING3_2PI*(1-pct/100)).toFixed(1));
+  const col = baseColor || colFor(pct);
+  c.style.stroke = col;
+  const p = document.getElementById(pctId);
+  p.textContent = pct+'%';
+  p.style.color = col;
+  document.getElementById(subId).textContent = done + ' / ' + list.length;
+}
 
 function updateAnalytics() {
+  // межі поточного тижня
+  const wkStart = MON_DATE.getTime();
+  const wkEnd   = SUN_DATE.getTime() + 86399999; // кінець неділі
+  const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  const todayEnd   = new Date(); todayEnd.setHours(23,59,59,999);
+
   let done=0,total=0,doneMins=0,totalMins=0,overdueOpen=0;
   const pri = {urgent:0,high:0,normal:0,low:0};
   TASKS.forEach(t => {
@@ -792,8 +888,8 @@ function updateAnalytics() {
   const pctT = total>0?Math.round(done/total*100):0;
   const pctH = totalMins>0?Math.round(doneMins/totalMins*100):0;
   const hD=(doneMins/60).toFixed(1), hL=(leftMins/60).toFixed(1), hT=(totalMins/60).toFixed(1);
-  const col = pctT>=80?'var(--accent)':pctT>=50?'var(--accent2)':'var(--warn)';
 
+  // ── ВЕРХНІ МЕТРИКИ (вся вибірка) ──
   document.getElementById('p-done').textContent=done;
   document.getElementById('p-total').textContent=total;
   document.getElementById('p-over').textContent=overdueOpen;
@@ -801,6 +897,8 @@ function updateAnalytics() {
   document.getElementById('p-hleft').textContent=hL;
   document.getElementById('p-htotal').textContent=hT;
 
+  // ── DONUT у хедері: загальний % виконання ──
+  const col = colFor(pctT);
   const dc=document.getElementById('donut-circle');
   dc.setAttribute('stroke-dashoffset', (DONUT_2PI*(1-pctT/100)).toFixed(1));
   dc.style.stroke=col;
@@ -812,11 +910,22 @@ function updateAnalytics() {
   document.getElementById('d-pct-h').textContent=pctH+'%';
   document.getElementById('d-bar-h').style.width=pctH+'%';
 
-  const rc=document.getElementById('ring-circle');
-  rc.setAttribute('stroke-dashoffset', (RING_2PI*(1-pctT/100)).toFixed(1));
-  rc.style.stroke=col;
-  document.getElementById('ring-pct').textContent=pctT+'%';
-  document.getElementById('ring-pct').style.color=col;
+  // ── ТРИ КІЛЬЦЯ ──
+  // 1) Сьогодні: дедлайн саме на сьогодні
+  const ringToday = TASKS.filter(t => t.dueMs && t.dueMs>=todayStart.getTime() && t.dueMs<=todayEnd.getTime());
+  // 2) Цей тиждень: дедлайн у межах Пн–Нд поточного тижня АБО прострочені, що тягнуться на цей тиждень
+  const ringWeek = TASKS.filter(t => {
+    if (t.dueMs && t.dueMs>=wkStart && t.dueMs<=wkEnd) return true;       // дедлайн у цьому тижні
+    if (t.bucket==='overdue' && t.status!=='closed') return true;        // прострочене висить зараз
+    return false;
+  });
+  // 3) Усі прострочені + сьогоднішні
+  const ringAll = TASKS.filter(t => t.bucket==='overdue' || t.bucket==='today');
+
+  setRing('ring-today','ring-today-pct','ring-today-sub', ringToday, 'var(--accent)');
+  setRing('ring-week','ring-week-pct','ring-week-sub',   ringWeek);
+  setRing('ring-all','ring-all-pct','ring-all-sub',      ringAll, 'var(--warn)');
+
   document.getElementById('r-done').textContent=done;
   document.getElementById('r-hdone').textContent=hD+'г';
   document.getElementById('r-hleft').textContent=hL+'г';
@@ -851,38 +960,64 @@ function addDetailed(){
 }
 
 // ════════════════════════════════════════════
-// WEEK
+// WEEK — рахується з реальних TASKS (Пн–Пт)
 // ════════════════════════════════════════════
-const WEEK_MOCK = {
-  1:[{done:true,mins:40},{done:true,mins:30},{done:true,mins:20}],
-  2:[{done:true,mins:60},{done:true,mins:25},{done:false,mins:45}],
-  3:[{done:true,mins:60},{done:true,mins:30},{done:false,mins:30},{done:false,mins:45}],
-  4:[{done:false,mins:90},{done:false,mins:45}],
-  5:[{done:false,mins:60}],
-  6:[],7:[]
-};
+let weekOffset = 0; // 0 = поточний тиждень, -1 минулий, +1 наступний
+
+function changeWeek(dir){
+  weekOffset += dir;
+  buildWeek();
+}
 
 function buildWeek(){
   const grid=document.getElementById('week-days-grid'); grid.innerHTML='';
-  let tDone=0,tAll=0,tDoneM=0,tAllM=0,pDone=0,pAll=0,pDoneM=0,pAllM=0;
 
-  for(let d=1;d<=7;d++){
-    const tasks=WEEK_MOCK[d]||[];
-    const dayD=new Date(MON_DATE); dayD.setDate(MON_DATE.getDate()+(d-1));
-    const isToday=d===DOW_NUM, isPast=d<DOW_NUM;
-    const dCnt=tasks.filter(t=>t.done).length;
-    const dM=tasks.filter(t=>t.done).reduce((s,t)=>s+t.mins,0);
-    const aM=tasks.reduce((s,t)=>s+t.mins,0);
-    const pctDay=tasks.length>0?Math.round(dCnt/tasks.length*100):0;
-    const pctHDay=aM>0?Math.round(dM/aM*100):0;
-    const leftM=aM-dM;
+  // понеділок цільового тижня
+  const mon = new Date(MON_DATE); mon.setDate(MON_DATE.getDate() + weekOffset*7); mon.setHours(0,0,0,0);
+  const sun = new Date(mon); sun.setDate(mon.getDate()+6); sun.setHours(23,59,59,999);
+  const wn = getWN(mon);
 
-    tDone+=dCnt; tAll+=tasks.length; tDoneM+=dM; tAllM+=aM;
-    if(d<=DOW_NUM){ pDone+=dCnt; pAll+=tasks.length; pDoneM+=dM; pAllM+=aM; }
+  // заголовок
+  document.getElementById('w-title').textContent = `Тиждень ${wn}` + (weekOffset===0?'':weekOffset<0?` (−${-weekOffset})`:` (+${weekOffset})`);
+  document.getElementById('w-range').textContent = `${fmt(mon)} – ${fmt(sun)} ${sun.getFullYear()}`;
 
-    const cls=isToday?'is-today':isPast?'is-past':'is-future';
-    const pctCol=pctDay>=80?'var(--accent)':pctDay>=50?'var(--warn)':'var(--danger)';
-    const dowName=['Нд','Пн','Вт','Ср','Чт','Пт','Сб'][d===7?0:d];
+  const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  const todayMs = todayStart.getTime();
+
+  // індекс сьогодні в межах тижня (1=Пн..5=Пт), або 0 якщо не в цьому тижні
+  const todayIdx = (() => {
+    const t = new Date(); t.setHours(0,0,0,0);
+    if (t < mon || t > sun) return weekOffset<0 ? 6 : 0; // минулий тиждень — все «в минулому»
+    const day = t.getDay()===0?7:t.getDay();
+    return day;
+  })();
+
+  let tDone=0,tAll=0,tDoneM=0,tAllM=0;          // увесь тиждень
+  let pDone=0,pAll=0,pDoneM=0,pAllM=0;          // від Пн до сьогодні
+
+  // показуємо лише Пн–Пт (5 днів)
+  for(let d=1; d<=5; d++){
+    const dayD = new Date(mon); dayD.setDate(mon.getDate()+(d-1)); dayD.setHours(0,0,0,0);
+    const dayStart = dayD.getTime();
+    const dayEnd = dayStart + 86399999;
+
+    // задачі цього дня = ті, чий дедлайн припадає на цей день
+    const dayTasks = TASKS.filter(t => t.dueMs && t.dueMs>=dayStart && t.dueMs<=dayEnd);
+    const dCnt = dayTasks.filter(t=>t.status==='closed').length;
+    const dM   = dayTasks.filter(t=>t.status==='closed').reduce((s,t)=>s+t.mins,0);
+    const aM   = dayTasks.reduce((s,t)=>s+t.mins,0);
+    const pctDay  = dayTasks.length>0?Math.round(dCnt/dayTasks.length*100):0;
+    const pctHDay = aM>0?Math.round(dM/aM*100):0;
+    const leftM = aM-dM;
+
+    tDone+=dCnt; tAll+=dayTasks.length; tDoneM+=dM; tAllM+=aM;
+    if(d<=todayIdx){ pDone+=dCnt; pAll+=dayTasks.length; pDoneM+=dM; pAllM+=aM; }
+
+    const isToday = (weekOffset===0 && d===todayIdx);
+    const isPast  = dayStart < todayMs;
+    const cls = isToday?'is-today':isPast?'is-past':'is-future';
+    const pctCol = pctDay>=80?'var(--accent)':pctDay>=50?'var(--warn)':'var(--danger)';
+    const dowName = ['','Пн','Вт','Ср','Чт','Пт'][d];
 
     grid.innerHTML+=`
     <div class="day-card ${cls}">
@@ -891,13 +1026,13 @@ function buildWeek(){
         <div class="dc-num">${dayD.getDate()}</div>
       </div>
       <div class="dc-body">
-        ${tasks.length===0?'<div class="dc-empty">Вихідний / порожньо</div>':`
+        ${dayTasks.length===0?'<div class="dc-empty">Немає задач</div>':`
         <div class="dc-pct-big">
           <div class="dc-pct-num" style="color:${pctCol}">${pctDay}%</div>
           <div class="dc-pct-label">виконання</div>
         </div>
         <div class="dc-grid">
-          <div class="dc-cell"><div class="dc-cell-key">Задачі</div><div class="dc-cell-val green">${dCnt}/${tasks.length}</div></div>
+          <div class="dc-cell"><div class="dc-cell-key">Задачі</div><div class="dc-cell-val green">${dCnt}/${dayTasks.length}</div></div>
           <div class="dc-cell"><div class="dc-cell-key">Год. вик.</div><div class="dc-cell-val blue">${(dM/60).toFixed(1)}г</div></div>
           <div class="dc-cell"><div class="dc-cell-key">Год. залиш.</div><div class="dc-cell-val orange">${(leftM/60).toFixed(1)}г</div></div>
           <div class="dc-cell"><div class="dc-cell-key">Год. план</div><div class="dc-cell-val">${(aM/60).toFixed(1)}г</div></div>
@@ -916,10 +1051,10 @@ function buildWeek(){
     </div>`;
   }
 
-  const pTC=pAll>0?Math.round(pDone/pAll*100):0;
-  const pTW=tAll>0?Math.round(tDone/tAll*100):0;
-  const pHC=pAllM>0?Math.round(pDoneM/pAllM*100):0;
-  const pHW=tAllM>0?Math.round(tDoneM/tAllM*100):0;
+  const pTC=pAll>0?Math.round(pDone/pAll*100):0;   // від пн до сьогодні (задачі)
+  const pTW=tAll>0?Math.round(tDone/tAll*100):0;   // увесь тиждень (задачі)
+  const pHC=pAllM>0?Math.round(pDoneM/pAllM*100):0; // від пн до сьогодні (години)
+  const pHW=tAllM>0?Math.round(tDoneM/tAllM*100):0; // увесь тиждень (години)
   const setKPI=(id,pct,sub)=>{
     const e=document.getElementById(id);
     e.textContent=pct+'%';
@@ -927,55 +1062,118 @@ function buildWeek(){
     document.getElementById(id+'-sub').textContent=sub;
     document.getElementById(id+'-bar').style.width=pct+'%';
   };
-  setKPI('wk-tc',pTC,`${pDone} вик. з ${pAll} за период`);
+  setKPI('wk-tc',pTC,`${pDone} вик. з ${pAll} за період`);
   setKPI('wk-tw',pTW,`${tDone} вик. з ${tAll} за тиждень`);
   setKPI('wk-hc',pHC,`${(pDoneM/60).toFixed(1)} вик. з ${(pAllM/60).toFixed(1)} год.`);
   setKPI('wk-hw',pHW,`${(tDoneM/60).toFixed(1)} вик. з ${(tAllM/60).toFixed(1)} год.`);
 }
 
 // ════════════════════════════════════════════
-// MONTH (з Google Sheets через n8n)
+// MONTH — рахується з реальних TASKS + історія з Sheets (fallback)
 // ════════════════════════════════════════════
-const MONTH_MOCK = {
-  done:87, total:138, pct:63, overdue:18, missed:33,
-  weeks:[
-    { w:'Т18', dates:'29кв–5трав', done:24, total:28, pct:86, status:'done' },
-    { w:'Т19', dates:'6–12 трав',  done:22, total:32, pct:69, status:'partial' },
-    { w:'Т20', dates:'13–19 трав', done:27, total:35, pct:77, status:'partial' },
-    { w:'Т21', dates:'20–25 трав ←',done:14, total:43, pct:33, status:'bad' }
-  ]
-};
-
 async function buildMonth(){
-  let m = MONTH_MOCK;
-  try {
-    const month = NOW.getFullYear()+'-'+String(NOW.getMonth()+1).padStart(2,'0');
-    const res = await fetch(N8N.month+'?month='+month);
-    if(res.ok) m = await res.json();
-  } catch(e) { /* fallback to mock if Sheets empty */ }
+  const year = NOW.getFullYear();
+  const monthIdx = NOW.getMonth();
+  const monthStart = new Date(year, monthIdx, 1); monthStart.setHours(0,0,0,0);
+  const monthEnd = new Date(year, monthIdx+1, 0); monthEnd.setHours(23,59,59,999);
+  const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  const todayEnd = new Date(); todayEnd.setHours(23,59,59,999);
 
-  document.getElementById('ms-done').textContent=m.done||0;
-  document.getElementById('ms-done-sub').textContent='з '+(m.total||0)+' запланованих';
-  document.getElementById('ms-pct').textContent=(m.pct||0)+'%';
-  document.getElementById('ms-over').textContent=m.overdue||0;
-  document.getElementById('ms-missed').textContent=m.missed||0;
+  // задачі місяця = дедлайн у межах місяця
+  const monthTasks = TASKS.filter(t => t.dueMs && t.dueMs>=monthStart.getTime() && t.dueMs<=monthEnd.getTime());
 
-  const weeks = m.weeks||[];
+  const total = monthTasks.length;
+  const done = monthTasks.filter(t=>t.status==='closed').length;
+  const pct = total>0?Math.round(done/total*100):0;
+
+  // прострочено (відкриті прострочені, що тягнуться далі)
+  const overdue = TASKS.filter(t=>t.bucket==='overdue' && t.status!=='closed').length;
+  // не виконано = відкриті задачі місяця
+  const missed = monthTasks.filter(t=>t.status!=='closed').length;
+
+  // MTD: задачі місяця з дедлайном до сьогодні включно
+  const mtdTasks = monthTasks.filter(t=>t.dueMs<=todayEnd.getTime());
+  const mtdDone = mtdTasks.filter(t=>t.status==='closed').length;
+  const mtdPct = mtdTasks.length>0?Math.round(mtdDone/mtdTasks.length*100):0;
+
+  // години
+  const totalMins = monthTasks.reduce((s,t)=>s+t.mins,0);
+  const doneMins = monthTasks.filter(t=>t.status==='closed').reduce((s,t)=>s+t.mins,0);
+  const hoursPct = totalMins>0?Math.round(doneMins/totalMins*100):0;
+
+  // ── зведення (4 картки) ──
+  document.getElementById('ms-done').textContent = done;
+  document.getElementById('ms-done-sub').textContent = 'з '+total+' запланованих';
+  document.getElementById('ms-pct').textContent = pct+'%';
+  document.getElementById('ms-over').textContent = overdue;
+  document.getElementById('ms-missed').textContent = missed;
+
+  // ── прогрес-бари ──
+  const setMBar=(id,p,sub)=>{
+    document.getElementById('mbar-'+id+'-pct').textContent=p+'%';
+    document.getElementById('mbar-'+id+'-pct').style.color = p>=80?'var(--accent)':p>=50?'var(--warn)':'var(--danger)';
+    document.getElementById('mbar-'+id).style.width=p+'%';
+    document.getElementById('mbar-'+id+'-sub').textContent=sub;
+  };
+  setMBar('total', pct, `${done} виконано з ${total} задач за місяць`);
+  setMBar('mtd', mtdPct, `${mtdDone} з ${mtdTasks.length} задач (дедлайн до сьогодні)`);
+  setMBar('hours', hoursPct, `${(doneMins/60).toFixed(1)}г з ${(totalMins/60).toFixed(1)}г плану`);
+
+  // ── тижнева розбивка місяця ──
+  // знаходимо всі понеділки, що перетинають місяць
+  const weeks = [];
+  let cur = getMon(monthStart);
+  while (cur <= monthEnd) {
+    const wStart = new Date(cur); wStart.setHours(0,0,0,0);
+    const wEnd = new Date(cur); wEnd.setDate(cur.getDate()+6); wEnd.setHours(23,59,59,999);
+
+    const inWeek = TASKS.filter(t=>t.dueMs && t.dueMs>=wStart.getTime() && t.dueMs<=wEnd.getTime());
+    const wDone = inWeek.filter(t=>t.status==='closed').length;
+    const wPct = inWeek.length>0?Math.round(wDone/inWeek.length*100):0;
+
+    // перенесені В цей тиждень: відкриті задачі з дедлайном ДО початку тижня,
+    // які станом на зараз ще висять (прострочені) — і цей тиждень містить сьогодні або майбутній
+    const isCurrentOrFuture = wEnd.getTime() >= todayStart.getTime();
+    const carried = isCurrentOrFuture
+      ? TASKS.filter(t=>t.status!=='closed' && t.dueMs && t.dueMs < wStart.getTime()).length
+      : 0;
+
+    const wn = getWN(wStart);
+    const status = inWeek.length===0 ? 'partial'
+      : (wEnd.getTime()<todayStart.getTime() ? (wPct>=80?'done':wPct>=50?'partial':'bad')
+         : (wStart.getTime()<=todayEnd.getTime() && wEnd.getTime()>=todayStart.getTime() ? 'bad' : 'partial'));
+    const isNow = (wStart.getTime()<=todayEnd.getTime() && wEnd.getTime()>=todayStart.getTime());
+
+    weeks.push({
+      w:'Т'+wn,
+      dates:`${wStart.getDate()}–${wEnd.getDate()} ${MON_UA[wEnd.getMonth()]}`+(isNow?' ←':''),
+      total:inWeek.length, done:wDone, pct:wPct, carried, status, isNow
+    });
+
+    cur = new Date(cur); cur.setDate(cur.getDate()+7);
+  }
+
+  // ── бар-чарт ──
   const colorFor=p=>p>=80?['var(--accent)','rgba(0,229,160,.25)']:p>=50?['var(--warn)','rgba(245,158,11,.25)']:['var(--danger)','rgba(239,68,68,.25)'];
-  document.getElementById('month-chart').innerHTML = weeks.length
+  document.getElementById('month-chart').innerHTML = weeks.some(w=>w.total>0)
     ? weeks.map(w=>{
         const [c1,c2]=colorFor(w.pct);
-        return `<div class="c-bar-wrap"><div class="c-bar" style="height:${w.pct}%;background:linear-gradient(180deg,${c1},${c2})"><div class="c-bar-val">${w.pct}%</div></div><div class="c-bar-label">${w.w}</div></div>`;
+        return `<div class="c-bar-wrap"><div class="c-bar" style="height:${Math.max(w.pct,3)}%;background:linear-gradient(180deg,${c1},${c2})"><div class="c-bar-val">${w.pct}%</div></div><div class="c-bar-label">${w.w}</div></div>`;
       }).join('')
-    : '<div style="color:var(--text3);font-size:11px;align-self:flex-end;">Дані з&#39;являться після перших виконаних задач</div>';
+    : '<div style="color:var(--text3);font-size:11px;align-self:flex-end;">Немає задач з дедлайнами цього місяця</div>';
 
+  // ── таблиця тижнів ──
   document.getElementById('month-table-body').innerHTML = weeks.map(w=>{
     const pc=w.pct>=80?'great':w.pct>=50?'ok':'bad';
-    const sLabel={done:'✓ OK',partial:'~ Part',bad:'↻ Зараз'}[w.status]||w.status;
+    const sLabel={done:'✓ OK',partial:'~ Част',bad:w.isNow?'↻ Зараз':'✗ Слабо'}[w.status]||w.status;
+    const carriedCell = w.carried>0
+      ? `<span style="color:var(--warn);font-weight:700">${w.carried}</span>`
+      : `<span style="color:var(--text3)">0</span>`;
     return `<tr>
       <td><div class="wt-week">${w.w}</div><div class="wt-dates">${w.dates||''}</div></td>
-      <td class="wt-num" style="color:${w.pct>=50?'var(--accent)':'var(--warn)'}">${w.done}/${w.total}</td>
-      <td><div class="mini-prog"><div class="mp-track"><div class="mp-fill" style="width:${w.pct}%"></div></div><span class="mp-pct ${pc}">${w.pct}%</span></div></td>
+      <td class="wt-num">${w.total}</td>
+      <td><div class="mini-prog"><div class="mp-track"><div class="mp-fill" style="width:${w.pct}%"></div></div><span class="mp-pct ${pc}">${w.done}/${w.total} · ${w.pct}%</span></div></td>
+      <td>${carriedCell}</td>
       <td><span class="sbadge ${w.status}">${sLabel}</span></td>
     </tr>`;
   }).join('');
