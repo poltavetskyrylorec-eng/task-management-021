@@ -616,7 +616,7 @@ function normalizeTask(t) {
 
   return {
     id: String(t.id),
-    parentId: t.parent_id ? String(t.parent_id) : null,
+    parentId: t.parentId ? String(t.parentId) : null,
     name: t.name,
     status: isClosed ? 'closed' : 'open',
     bucket,
