@@ -1051,21 +1051,14 @@ function buildWeek(){
   const todayStart = new Date(); todayStart.setHours(0,0,0,0);
   const todayMs = todayStart.getTime();
 
-  // ── ПЕРЕНЕСЕНО (OVERDUE) на цей тиждень ──
-  // незакриті МОЇ задачі, чий дедлайн був ДО початку цього тижня
+  // ── ПЕРЕНЕСЕНО (OVERDUE) на цей тиждень — СТАТИЧНИЙ знімок ──
+  // Поточний розрахунок (для першого запису знімка):
   const carryover = TASKS.filter(t => countsForTasks(t) && t.status!=='closed' && t.dueMs && t.dueMs < mon.getTime());
-  const coTasks = carryover.length;
-  const coMins = carryover.filter(t=>countsForTime(t)).reduce((s,t)=>s+t.mins,0);
-  const coEl = document.getElementById('week-carryover');
-  if (coTasks > 0) {
-    coEl.classList.remove('hidden');
-    document.getElementById('wco-tasks').textContent = coTasks;
-    document.getElementById('wco-hours').textContent = (coMins/60).toFixed(1)+'г';
-    document.getElementById('wco-sub').textContent =
-      `Незакриті задачі з дедлайном до ${fmt(mon)} тягнуться на цей тиждень`;
-  } else {
-    coEl.classList.add('hidden');
-  }
+  const coTasksNow = carryover.length;
+  const coMinsNow = carryover.filter(t=>countsForTime(t)).reduce((s,t)=>s+t.mins,0);
+  // ключ тижня (YYYY-MM-DD понеділка)
+  const weekKey = `${mon.getFullYear()}-${String(mon.getMonth()+1).padStart(2,'0')}-${String(mon.getDate()).padStart(2,'0')}`;
+  loadCarryoverSnapshot(weekKey, coTasksNow, coMinsNow, mon);
 
   // індекс сьогодні в межах тижня (1=Пн..5=Пт), або 0 якщо не в цьому тижні
   const todayIdx = (() => {
@@ -1156,6 +1149,51 @@ function buildWeek(){
   setKPI('wk-tw',pTW,`${tDone} вик. з ${tAll} за тиждень`);
   setKPI('wk-hc',pHC,`${(pDoneM/60).toFixed(1)} вик. з ${(pAllM/60).toFixed(1)} год.`);
   setKPI('wk-hw',pHW,`${(tDoneM/60).toFixed(1)} вик. з ${(tAllM/60).toFixed(1)} год.`);
+}
+
+// Статичний знімок "перенесено": читає збережений; якщо немає — фіксує поточний
+async function loadCarryoverSnapshot(weekKey, tasksNow, minsNow, mon) {
+  const coEl = document.getElementById('week-carryover');
+  const render = (tasks, hours, frozen) => {
+    if (tasks > 0) {
+      coEl.classList.remove('hidden');
+      document.getElementById('wco-tasks').textContent = tasks;
+      document.getElementById('wco-hours').textContent = (hours/60).toFixed(1)+'г';
+      document.getElementById('wco-sub').textContent = frozen
+        ? `Зафіксовано на початок тижня (${fmt(mon)}). Не змінюється при закритті задач.`
+        : `Незакриті задачі з дедлайном до ${fmt(mon)} тягнуться на цей тиждень`;
+    } else {
+      coEl.classList.add('hidden');
+    }
+  };
+
+  // одразу показуємо поточне (щоб не блимало порожнім), далі уточнюємо зі знімка
+  render(tasksNow, minsNow, false);
+
+  if (USE_MOCK) return;
+  try {
+    const res = await fetch(GS_URL + '?action=getWeekSnapshot&weekStart=' + encodeURIComponent(weekKey));
+    const snap = await res.json();
+    if (snap && snap.exists) {
+      // знімок є — показуємо ЗАМОРОЖЕНЕ значення
+      render(snap.carriedTasks, snap.carriedHours, true);
+    } else {
+      // знімка немає — фіксуємо поточне значення один раз
+      await fetch(GS_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'setWeekSnapshot',
+          weekStart: weekKey,
+          carriedTasks: tasksNow,
+          carriedHours: minsNow
+        })
+      });
+      render(tasksNow, minsNow, true);
+    }
+  } catch(e) {
+    // якщо бекенд недоступний — лишаємо поточне значення
+  }
 }
 
 // ════════════════════════════════════════════
