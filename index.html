@@ -1020,25 +1020,45 @@ function byDue(a, b) {
   return (a.name || '').localeCompare(b.name || '', 'uk');
 }
 
-// Найгостріший bucket у піддереві: прострочено > сьогодні > найближчі.
-// Контекстні (чужі) задачі не враховуються — вони лише тло для дерева.
-const BUCKET_ORDER = ['overdue', 'today', 'upcoming'];
-const BUCKET_RANK  = { overdue:0, today:1, upcoming:2 };
-function subtreeRank(t, depth) {
-  depth = depth || 0;
-  if (depth > 12) return BUCKET_RANK[t.bucket] ?? 2;      // запобіжник від циклів
-  let best = t.contextOnly ? 99 : (BUCKET_RANK[t.bucket] ?? 2);
-  (CHILDREN[t.id] || []).forEach(c => { best = Math.min(best, subtreeRank(c, depth + 1)); });
-  return best === 99 ? (BUCKET_RANK[t.bucket] ?? 2) : best;
+// Збирає піддерево для секції: беруться ЛИШЕ задачі, чий ВЛАСНИЙ дедлайн
+// відповідає секції. Їхні батьки додаються як заголовки — щоб було видно
+// контекст, — але без чекбокса й без обліку: батько живе у своїй секції.
+function sectionTree(memberList) {
+  const members = new Set();
+  const allowed = new Set();
+  memberList.forEach(t => {
+    members.add(t.id);
+    allowed.add(t.id);
+    let p = t.parentId ? BY_ID[t.parentId] : null;
+    let guard = 0;
+    while (p && guard++ < 12) {
+      allowed.add(p.id);
+      p = p.parentId ? BY_ID[p.parentId] : null;
+    }
+  });
+  const roots = [...allowed]
+    .map(id => BY_ID[id])
+    .filter(t => t && !(t.parentId && allowed.has(t.parentId)));
+  return { roots, allowed, members };
 }
 
-// Найближчий дедлайн у піддереві — за ним фільтруємо горизонт і сортуємо.
-// Батько з дедлайном «+9 дн» і підзадачею на завтра має поводитись як «завтра».
-function subtreeDue(t, depth) {
+// Найраніший дедлайн серед задач секції в цьому піддереві — за ним сортуємо
+function sectionDue(t, members, depth) {
   depth = depth || 0;
-  if (depth > 12) return t.dueMs || Infinity;
-  let best = t.contextOnly ? Infinity : (t.dueMs || Infinity);
-  (CHILDREN[t.id] || []).forEach(c => { best = Math.min(best, subtreeDue(c, depth + 1)); });
+  if (depth > 12) return Infinity;
+  let best = members.has(t.id) ? (t.dueMs || Infinity) : Infinity;
+  (CHILDREN[t.id] || []).forEach(c => {
+    best = Math.min(best, sectionDue(c, members, depth + 1));
+  });
+  return best;
+}
+function sectionPri(t, members, depth) {
+  depth = depth || 0;
+  if (depth > 12) return 9;
+  let best = members.has(t.id) ? (PRI_RANK[t.priority] ?? 2) : 9;
+  (CHILDREN[t.id] || []).forEach(c => {
+    best = Math.min(best, sectionPri(c, members, depth + 1));
+  });
   return best;
 }
 
@@ -1102,53 +1122,52 @@ function renderTasks() {
     }
   });
 
-  // 3) корені = задачі без батька (або з батьком поза набором)
-  const roots = TASKS.filter(t => !(t.parentId && BY_ID[t.parentId]));
 
-  // 4) Корінь потрапляє в НАЙГОСТРІШУ секцію свого піддерева.
-  //    Раніше він ішов за власним дедлайном, тому батько з дедлайном «+9 дн»
-  //    тягнув у «Найближчі» підзадачу, яку треба зробити сьогодні:
-  //    секція «На сьогодні» показувала лічильник 2 і порожній список.
-  const rootBuckets = { overdue:[], today:[], upcoming:[] };
-  roots.forEach(t => {
-    const b = BUCKET_ORDER[subtreeRank(t)];
-    if (rootBuckets[b]) rootBuckets[b].push(t);
-  });
 
-  // Сортуємо за НАЙБЛИЖЧИМ дедлайном у піддереві, зростанням: найгостріше зверху.
-  // ClickUp з order_by=due_date віддає за спаданням, тому без цього
-  // задача на «+10 днів» опинялась вище, ніж «Сьогодні».
-  // Прострочені так само: найдавніша прострочка нагорі, вона найгостріша.
-  const bySubtree = (a,b) => {
-    const da = subtreeDue(a), db = subtreeDue(b);
-    if (da !== db) return da - db;
-    return byDue(a, b);
-  };
-  Object.keys(rootBuckets).forEach(k => rootBuckets[k].sort(bySubtree));
-
-  // Горизонт застосовуємо ЛИШЕ до «Найближчих»: прострочене й сьогоднішнє
-  // ховати не можна ні за яких налаштувань.
+  // 4) Кожна секція бере ЛИШЕ задачі зі своїм власним дедлайном.
+  //    Раніше в секцію їхало все піддерево цілком, тому «На сьогодні»
+  //    показувала підзадачі з дедлайнами +3 і +9 днів.
   const hzEnd = horizonEnd();
-  const upShown  = rootBuckets.upcoming.filter(t => subtreeDue(t) <= hzEnd);
-  const upHidden = rootBuckets.upcoming.filter(t => subtreeDue(t) >  hzEnd);
+  const real = TASKS.filter(t => countsForTasks(t));
 
-  renderBucket('list-ov', rootBuckets.overdue, 'overdue');
-  renderBucket('list-td', rootBuckets.today,   'today');
-  renderBucket('list-up', upShown,             'upcoming');
+  const ovList = real.filter(t => t.bucket === 'overdue');
+  const tdList = real.filter(t => t.bucket === 'today');
+  const upAll  = real.filter(t => t.bucket === 'upcoming');
+  // горизонт — по ВЛАСНОМУ дедлайну задачі, не по батьківському
+  const upList    = upAll.filter(t => (t.dueMs || Infinity) <= hzEnd);
+  const upHidden  = upAll.length - upList.length;
 
-  // Лічильник = скільки задач РЕАЛЬНО показано в секції (разом із вкладеними).
-  // Тепер цифра в заголовку завжди збігається з тим, що видно нижче.
-  const nOv = countRendered(rootBuckets.overdue);
-  const nTd = countRendered(rootBuckets.today);
-  const nUp = countRendered(upShown);
-  const nHidden = countRendered(upHidden);
+  const secOv = sectionTree(ovList);
+  const secTd = sectionTree(tdList);
+  const secUp = sectionTree(upList);
+
+  // Сортування: спершу найраніший дедлайн серед задач секції,
+  // потім найвищий пріоритет серед них, потім назва.
+  const mk = sec => (a, b) => {
+    const da = sectionDue(a, sec.members), db = sectionDue(b, sec.members);
+    if (da !== db) return da - db;
+    const pa = sectionPri(a, sec.members), pb = sectionPri(b, sec.members);
+    if (pa !== pb) return pa - pb;
+    return (a.name || '').localeCompare(b.name || '', 'uk');
+  };
+  secOv.roots.sort(mk(secOv));
+  secTd.roots.sort(mk(secTd));
+  secUp.roots.sort(mk(secUp));
+
+  renderBucket('list-ov', secOv, 'overdue');
+  renderBucket('list-td', secTd, 'today');
+  renderBucket('list-up', secUp, 'upcoming');
+
+  // Лічильник = скільки задач секції реально в ній лежить.
+  // Батьки-заголовки не рахуються — вони живуть у своїй секції.
+  const nOv = ovList.length, nTd = tdList.length, nUp = upList.length;
   document.getElementById('cnt-ov').textContent = nOv;
   document.getElementById('cnt-td').textContent = nTd;
   document.getElementById('cnt-up').textContent = nUp;
 
   const more = document.getElementById('up-more');
-  if (more) more.textContent = nHidden > 0
-    ? `Ще ${nHidden} задач(і) за межами горизонту — натисни «Усі», щоб побачити`
+  if (more) more.textContent = upHidden > 0
+    ? `Ще ${upHidden} задач(і) за межами горизонту — натисни «Усі», щоб побачити`
     : '';
 
   // Підказка: прострочене й сьогоднішнє закриті — можна братись за наступні дні
@@ -1171,29 +1190,41 @@ function renderTasks() {
   updateAnalytics();
 }
 
-function taskCardHTML(t, depth) {
+function taskCardHTML(t, depth, sec) {
   const done = t.status === 'closed';
   const dueClass = t.bucket==='overdue'?'overdue':t.bucket==='today'?'today':'upcoming';
   const priTag = (t.priority==='high'||t.priority==='urgent') ? `<span class="tag hi">${PRI_TAG[t.priority]}</span>` : '';
   const indent = depth > 0 ? `margin-left:${depth*24}px;border-left:2px solid var(--border);` : '';
   const prefix = depth === 1 ? '↳ ' : depth >= 2 ? '↳↳ ' : '';
-  const kids = (CHILDREN[t.id] || []).slice().sort(byDue);
+  // діти — лише ті, що належать цій секції (або ведуть до її задач)
+  const kids = (CHILDREN[t.id] || [])
+    .filter(c => sec.allowed.has(c.id))
+    .sort((a,b) => {
+      const da = sectionDue(a, sec.members), db = sectionDue(b, sec.members);
+      if (da !== db) return da - db;
+      const pa = sectionPri(a, sec.members), pb = sectionPri(b, sec.members);
+      if (pa !== pb) return pa - pb;
+      return (a.name||'').localeCompare(b.name||'', 'uk');
+    });
 
-  // Контекстна (чужа батьківська) задача: показуємо для дерева, але без чекбокса і без обліку
-  if (t.contextOnly) {
+  // Батько, який сам не належить цій секції: показуємо як ЗАГОЛОВОК —
+  // без чекбокса й без обліку. Свій чекбокс він має у своїй секції.
+  if (t.contextOnly || !sec.members.has(t.id)) {
+    const why = t.contextOnly
+      ? 'Контекст · інший виконавець'
+      : 'Батьківська · дедлайн ' + t.dueLabel;
     return `
-      <div class="tcard context ${dueClass}" id="card-${t.id}" data-status="${t.status}" data-bucket="${t.bucket}" style="${indent}">
-        <div class="tchk-stub" title="Відповідальний — інша людина"></div>
+      <div class="tcard context ${dueClass}" id="hdr-${t.id}" style="${indent}">
+        <div class="tchk-stub" title="${t.contextOnly ? 'Відповідальний — інша людина' : 'Дедлайн цієї задачі не сьогодні — вона в своїй секції'}"></div>
         <div class="t-body">
           <div class="t-name" style="${depth>0?'font-size:12px;':''}">${prefix}${t.name}</div>
           <div class="t-meta">
-            <span class="tag context-tag">Контекст · інший виконавець</span>
-            <span class="tag ${dueClass}">${t.dueLabel}</span>
+            <span class="tag context-tag">${why}</span>
           </div>
         </div>
         <div class="t-acts"><a class="t-btn" href="${t.url}" target="_blank" title="ClickUp">↗</a></div>
       </div>
-      ${kids.map(c => taskCardHTML(c, depth+1)).join('')}`;
+      ${kids.map(c => taskCardHTML(c, depth+1, sec)).join('')}`;
   }
 
   // Якщо час задачі дублюється підзадачами — не показуємо тег часу
@@ -1215,16 +1246,16 @@ function taskCardHTML(t, depth) {
       </div>
       <div class="t-acts"><a class="t-btn" href="${t.url}" target="_blank" title="ClickUp">↗</a></div>
     </div>
-    ${kids.map(c => taskCardHTML(c, depth+1)).join('')}`;
+    ${kids.map(c => taskCardHTML(c, depth+1, sec)).join('')}`;
 }
 
-function renderBucket(elId, rootList, type) {
+function renderBucket(elId, sec, type) {
   const el = document.getElementById(elId);
-  if (!rootList || rootList.length === 0) {
+  if (!sec || !sec.roots || sec.roots.length === 0) {
     el.innerHTML = `<div class="empty-state">Немає задач у цій категорії</div>`;
     return;
   }
-  el.innerHTML = rootList.map(t => taskCardHTML(t, 0)).join('');
+  el.innerHTML = sec.roots.map(t => taskCardHTML(t, 0, sec)).join('');
 }
 
 // ════════════════════════════════════════════
