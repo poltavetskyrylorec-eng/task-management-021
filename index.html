@@ -124,6 +124,7 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
 .tag.upcoming{color:var(--accent2);border-color:rgba(14,165,233,.3);background:rgba(14,165,233,.07)}
 .tag.manual{color:var(--accent);border-color:rgba(0,229,160,.3);background:rgba(0,229,160,.07)}
 .tag.clickup{color:var(--text3);border-color:var(--border);background:var(--surface2)}
+.tag.who-tag{font-weight:800;letter-spacing:.3px}
 .tag.hi{color:var(--accent3);border-color:rgba(255,107,53,.3);background:rgba(255,107,53,.07)}
 .tag.time{color:var(--text2);border-color:var(--border);background:var(--surface2)}
 .tag.context-tag{color:var(--text3);border-color:rgba(148,163,184,.25);background:rgba(148,163,184,.07);font-style:italic}
@@ -816,7 +817,10 @@ const PERSONAL = (URL_USER && TEAM_BY_ID[String(URL_USER)]) ? String(URL_USER) :
 const ME = PERSONAL ? member(PERSONAL) : null;
 
 // активний фільтр: 'all' або ClickUp user id
-let WHO = PERSONAL || localStorage.getItem('dabudai_who') || 'all';
+// Дефолт — ВЛАСНІ задачі: трекер це особистий фокус дня.
+// Щоб побачити всю команду в трекері, є пункт «Вся команда» у фільтрі,
+// а зведена картина по всіх завжди у вкладці «Аналітика команди».
+let WHO = PERSONAL || localStorage.getItem('dabudai_who') || TEAM[0].id;
 
 // ════════════════════════════════════════════
 // SAFE FETCH — таймаут + перевірка res.ok (фікс #5)
@@ -983,9 +987,30 @@ function normalizeTask(t) {
 // FILTER — застосовує WHO до ALL_TASKS
 // ════════════════════════════════════════════
 function applyFilter() {
-  TASKS = (WHO === 'all')
-    ? ALL_TASKS.slice()
-    : ALL_TASKS.filter(t => t.assigneeId === WHO);
+  if (WHO === 'all') {
+    TASKS = ALL_TASKS.slice();
+  } else {
+    // Беремо задачі людини — І ВЕСЬ ЛАНЦЮЖОК ЇХНІХ БАТЬКІВ.
+    // Раніше батько, записаний на іншу людину, просто випадав з набору,
+    // і підзадачі Каті висіли без заголовка, вирвані з контексту.
+    const byId = {};
+    ALL_TASKS.forEach(t => { byId[t.id] = t; });
+    const keep = new Map();
+    ALL_TASKS.filter(t => t.assigneeId === WHO).forEach(t => keep.set(t.id, t));
+
+    [...keep.values()].forEach(t => {
+      let p = t.parentId ? byId[t.parentId] : null;
+      let guard = 0;
+      while (p && guard++ < 12) {
+        if (!keep.has(p.id)) {
+          // чужий батько показується як заголовок: без чекбокса й без обліку
+          keep.set(p.id, p.assigneeId === WHO ? p : Object.assign({}, p, { contextOnly: true }));
+        }
+        p = p.parentId ? byId[p.parentId] : null;
+      }
+    });
+    TASKS = [...keep.values()];
+  }
   renderTasks();
   renderWhoList();
   if (document.getElementById('view-week').classList.contains('active'))  buildWeek();
@@ -1302,6 +1327,12 @@ function taskCardHTML(t, depth, sec) {
   // Якщо час задачі дублюється підзадачами — не показуємо тег часу
   const timeTag = t.hasKidsInSet ? '' : `<span class="tag time">⏱ ${t.mins}хв</span>`;
 
+  // У режимі «Вся команда» без мітки не зрозуміло, чия це задача
+  const m = t.assigneeId ? member(t.assigneeId) : null;
+  const whoTag = (WHO === 'all' && m)
+    ? `<span class="tag who-tag" style="color:${m.color};border-color:${m.color}44;background:${m.color}14">${m.short}</span>`
+    : '';
+
   return `
     <div class="tcard ${dueClass} ${done?'done':''}" data-task="${t.id}" data-min="${t.mins}" data-status="${t.status}" data-bucket="${t.bucket}" style="${indent}">
       <div class="tchk ${done?'checked':''}" onclick="toggleTask('${t.id}')">
@@ -1310,6 +1341,7 @@ function taskCardHTML(t, depth, sec) {
       <div class="t-body">
         <div class="t-name" style="${depth>0?'font-size:12px;':''}">${prefix}${t.name}</div>
         <div class="t-meta">
+          ${whoTag}
           <span class="tag ${dueClass}">${t.dueLabel}</span>
           ${priTag}
           ${timeTag}
