@@ -329,6 +329,13 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
 .up-wrap.collapsed { max-height:0; opacity:0; }
 .up-hint { display:flex; align-items:center; gap:8px; padding:11px 14px; margin-bottom:6px; border-radius:var(--r); background:rgba(0,229,160,.07); border:1px solid rgba(0,229,160,.22); font-size:11.5px; font-weight:600; color:var(--accent); cursor:pointer; }
 .up-hint.hidden { display:none; }
+/* ── ПЕРСОНАЛЬНИЙ РЕЖИМ ── */
+body.personal .who-label,
+body.personal #tm-chart-card,
+body.personal #tm-table-card { display:none; }
+body.personal .tm-split { grid-template-columns:1fr; }
+body.personal .tm-cards { max-width:340px; }
+.all-note { font-size:9px; color:var(--text3); font-weight:600; }
 .up-more { font-size:10px; color:var(--text3); font-weight:600; padding:8px 2px 0; }
 
 /* skeleton */
@@ -423,7 +430,7 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="5" r="3"/><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
       Аналітика команди
     </a>
-    <div class="nav-label" style="margin-top:10px;">Фільтр по людині</div>
+    <div class="nav-label who-label" style="margin-top:10px;">Фільтр по людині</div>
     <div class="who-list" id="who-list"></div>
   </div>
   <div class="sidebar-foot">
@@ -513,6 +520,22 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
         <div id="up-wrap" class="up-wrap collapsed">
           <div id="list-up"></div>
           <div class="up-more" id="up-more"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="sec-head up-head" id="all-head" onclick="toggleAll()">
+          <div class="sec-title">
+            <svg class="up-caret" width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2l4 4-4 4"/></svg>
+            <div class="sec-dot" style="background:var(--text3)"></div>Усі задачі
+          </div>
+          <div class="up-right" onclick="event.stopPropagation()">
+            <span class="all-note" id="all-note"></span>
+            <span class="sec-cnt" id="cnt-all">0</span>
+          </div>
+        </div>
+        <div id="all-wrap" class="up-wrap">
+          <div id="list-all"></div>
         </div>
       </div>
     </div>
@@ -695,7 +718,7 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
     <div class="tm-cards" id="tm-cards"></div>
 
     <div class="tm-split">
-      <div class="week-table-card">
+      <div class="week-table-card" id="tm-table-card">
         <table class="tt">
           <thead>
             <tr>
@@ -715,7 +738,7 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
         </table>
       </div>
 
-      <div class="chart-card">
+      <div class="chart-card" id="tm-chart-card">
         <div class="chart-head">% виконання по людях</div>
         <div class="chart-area" id="tm-chart"></div>
       </div>
@@ -727,7 +750,7 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
     </div>
 
     <div class="chart-card">
-      <div class="chart-head">Задачі по виконавцях</div>
+      <div class="chart-head" id="tm-tasks-head">Задачі по виконавцях</div>
       <div class="tm-tasklist" id="tm-tasks"></div>
     </div>
   </div>
@@ -781,8 +804,19 @@ const TEAM = [
 const TEAM_BY_ID = Object.fromEntries(TEAM.map(m => [m.id, m]));
 function member(id){ return TEAM_BY_ID[String(id)] || { id:String(id), short:'??', name:'Невідомий', role:'—', color:'#7D8FA8' }; }
 
+// ════════════════════════════════════════════
+// ПЕРСОНАЛЬНИЙ РЕЖИМ  ?user=<clickup_id>
+// За таким посиланням людина бачить ЛИШЕ свої задачі й свою аналітику.
+// Чужі задачі навіть не завантажуються в браузер — бекенд віддає зріз
+// по одній людині, тож їх не видно і через DevTools.
+// Посилання без параметра = повний режим фаундера.
+// ════════════════════════════════════════════
+const URL_USER = new URLSearchParams(location.search).get('user');
+const PERSONAL = (URL_USER && TEAM_BY_ID[String(URL_USER)]) ? String(URL_USER) : null;
+const ME = PERSONAL ? member(PERSONAL) : null;
+
 // активний фільтр: 'all' або ClickUp user id
-let WHO = localStorage.getItem('dabudai_who') || 'all';
+let WHO = PERSONAL || localStorage.getItem('dabudai_who') || 'all';
 
 // ════════════════════════════════════════════
 // SAFE FETCH — таймаут + перевірка res.ok (фікс #5)
@@ -894,7 +928,9 @@ function normalizeTask(t) {
   if (isClosed) {
     bucket = (due && due >= todayStart.getTime() && due <= todayEnd.getTime()) ? 'today' : 'overdue';
   } else if (!due) {
-    bucket = 'today';
+    // Задача без дедлайну — НЕ сьогоднішня. Раніше вона падала в «На сьогодні»
+    // і засмічувала фокус дня. Тепер живе лише в повному списку внизу.
+    bucket = 'nodue';
   } else if (due < todayStart.getTime()) {
     bucket = 'overdue';
   } else if (due <= todayEnd.getTime()) {
@@ -958,6 +994,7 @@ function applyFilter() {
 }
 
 function setWho(id) {
+  if (PERSONAL) return;          // фільтр залиплений на власнику посилання
   WHO = id;
   localStorage.setItem('dabudai_who', id);
   applyFilter();
@@ -966,6 +1003,7 @@ function setWho(id) {
 function renderWhoList() {
   const el = document.getElementById('who-list');
   if (!el) return;
+  if (PERSONAL) { el.innerHTML = ''; return; }
   const rows = [{ id:'all', short:'ВС', name:'Вся команда', color:'#7D8FA8' }].concat(TEAM);
   el.innerHTML = rows.map(m => {
     const list = m.id === 'all' ? ALL_TASKS : ALL_TASKS.filter(t => t.assigneeId === m.id);
@@ -989,7 +1027,10 @@ async function loadToday() {
       ALL_TASKS = mockTasks();
     } else {
       // scope=team — бекенд віддає задачі ВСІХ людей з TEAM одним запитом
-      const data = await api(GS_URL + '?action=getTasks&scope=team');
+      const q = PERSONAL
+        ? '?action=getTasks&user=' + encodeURIComponent(PERSONAL)   // тільки свої
+        : '?action=getTasks&scope=team';                            // вся команда
+      const data = await api(GS_URL + q);
       ALL_TASKS = (data.tasks || []).map(normalizeTask).filter(Boolean);
     }
     applyFilter();
@@ -1075,6 +1116,21 @@ function countRendered(list, depth) {
 let HORIZON = parseInt(localStorage.getItem('dabudai_horizon') ?? '3', 10);
 let UP_OPEN = localStorage.getItem('dabudai_up_open') === '1';
 let UP_AUTO = false;   // секцію відкрив автопідказник, а не людина
+// Повний список задач унизу — відкритий за замовчуванням
+let ALL_OPEN = localStorage.getItem('dabudai_all_open') !== '0';
+
+function toggleAll(){
+  ALL_OPEN = !ALL_OPEN;
+  localStorage.setItem('dabudai_all_open', ALL_OPEN ? '1' : '0');
+  paintAll();
+}
+function paintAll(){
+  const wrap = document.getElementById('all-wrap');
+  const head = document.getElementById('all-head');
+  if (!wrap || !head) return;
+  wrap.classList.toggle('collapsed', !ALL_OPEN);
+  head.classList.toggle('open', ALL_OPEN);
+}
 
 function setHorizon(days, el){
   HORIZON = days;
@@ -1170,6 +1226,22 @@ function renderTasks() {
     ? `Ще ${upHidden} задач(і) за межами горизонту — натисни «Усі», щоб побачити`
     : '';
 
+  // ── ПОВНИЙ СПИСОК: усі задачі, незалежно від дедлайну й горизонту ──
+  // Три блоки вище — це фокус на найближче. Тут — уся картина на місяць-два.
+  const secAll = sectionTree(real);
+  secAll.roots.sort(mk(secAll));
+  renderBucket('list-all', secAll, 'all');
+  document.getElementById('cnt-all').textContent = real.length;
+  const note = document.getElementById('all-note');
+  if (note) {
+    const noDue = real.filter(t => !t.dueMs).length;
+    const last  = real.filter(t => t.dueMs).sort((a,b)=>b.dueMs-a.dueMs)[0];
+    note.textContent = last
+      ? `до ${fmt(new Date(last.dueMs))}` + (noDue ? ` · ${noDue} без дедлайну` : '')
+      : '';
+  }
+  paintAll();
+
   // Підказка: прострочене й сьогоднішнє закриті — можна братись за наступні дні
   const openLeft = TASKS.filter(t => countsForTasks(t) && t.status !== 'closed'
                     && (t.bucket === 'overdue' || t.bucket === 'today')).length;
@@ -1231,7 +1303,7 @@ function taskCardHTML(t, depth, sec) {
   const timeTag = t.hasKidsInSet ? '' : `<span class="tag time">⏱ ${t.mins}хв</span>`;
 
   return `
-    <div class="tcard ${dueClass} ${done?'done':''}" id="card-${t.id}" data-min="${t.mins}" data-status="${t.status}" data-bucket="${t.bucket}" style="${indent}">
+    <div class="tcard ${dueClass} ${done?'done':''}" data-task="${t.id}" data-min="${t.mins}" data-status="${t.status}" data-bucket="${t.bucket}" style="${indent}">
       <div class="tchk ${done?'checked':''}" onclick="toggleTask('${t.id}')">
         <svg class="chk-ico" width="9" height="9" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#07090E" stroke-width="2.2" stroke-linecap="round"/></svg>
       </div>
@@ -1268,18 +1340,24 @@ async function toggleTask(id) {
     toast('🔒','Цю задачу закриває інший виконавець');
     return;
   }
-  const card = document.getElementById('card-' + id);
-  const chk = card ? card.querySelector('.tchk') : null;
-  // Картки може не бути в DOM: задача за межами горизонту «Найближчі»
+  // Одна задача може бути на екрані кілька разів: у своєму блоці
+  // (Прострочені / Сьогодні / Найближчі) і в повному списку внизу.
+  // Оновлюємо ВСІ її копії, інакше друга картка показує застарілий стан.
+  const cards = [...document.querySelectorAll(`.tcard[data-task="${id}"]`)];
+  // Картки може не бути в DOM узагалі: задача за межами горизонту
   // або в згорнутій секції. Модель і ClickUp однаково мають оновитись.
-  const wasDone = chk ? chk.classList.contains('checked') : (task && task.status === 'closed');
+  const wasDone = cards.length
+    ? cards[0].querySelector('.tchk').classList.contains('checked')
+    : (task && task.status === 'closed');
   const nextStatus = wasDone ? 'open' : 'closed';
 
   const paint = (st) => {
-    if (chk && card) {
+    cards.forEach(card => {
+      const chk = card.querySelector('.tchk');
+      if (!chk) return;
       if (st === 'closed') { chk.classList.add('checked');    card.classList.add('done');    card.dataset.status='closed'; }
       else                 { chk.classList.remove('checked'); card.classList.remove('done'); card.dataset.status='open';   }
-    }
+    });
     if (task) task.status = st;
     updateAnalytics();
     renderWhoList();
@@ -1926,7 +2004,8 @@ function weeklyBreakdown(list, from, to){
 }
 
 function computeTeamStats(from, to){
-  const members = TEAM.map(m => {
+  const scope = PERSONAL ? TEAM.filter(m => m.id === PERSONAL) : TEAM;
+  const members = scope.map(m => {
     const list = ALL_TASKS.filter(t => t.assigneeId === m.id);
     return { id:m.id, name:m.name, short:m.short,
              stats: analyzeRange(list, from, to),
@@ -1988,7 +2067,7 @@ function renderTeam(from, to){
   };
   document.getElementById('tm-tbody').innerHTML =
     rows.map(r => rowHTML(r.short, r.name, r.color, r.stats, false)).join('') +
-    rowHTML('ВС', 'Разом', '#7D8FA8', S.total, true);
+    (PERSONAL ? '' : rowHTML('ВС', 'Разом', '#7D8FA8', S.total, true));
 
   // ── чарт ──
   const maxPct = Math.max(100, ...rows.map(r=>r.stats.pct));
@@ -2000,6 +2079,8 @@ function renderTeam(from, to){
       <div class="c-bar-label">${r.short}</div>
     </div>`).join('');
 
+  const th = document.getElementById('tm-tasks-head');
+  if (th) th.textContent = PERSONAL ? 'Мої задачі за період' : 'Задачі по виконавцях';
   renderDetail(rows);
   renderTeamTasks(rows, from, to);
 }
@@ -2008,7 +2089,8 @@ function renderTeam(from, to){
 function renderDetail(rows){
   const sel = rows.filter(r => WHO === 'all' ? true : r.id === WHO);
   document.getElementById('tm-detail-head').textContent =
-    WHO === 'all' ? 'Деталізація — усі' : 'Деталізація — ' + member(WHO).name;
+    PERSONAL ? 'Мої показники за період'
+             : (WHO === 'all' ? 'Деталізація — усі' : 'Деталізація — ' + member(WHO).name);
 
   document.getElementById('tm-detail').innerHTML = sel.map(r => {
     const s = r.stats;
@@ -2119,12 +2201,34 @@ document.getElementById('mo-who').innerHTML =
 
 // підпис у футері сайдбара — завжди founder
 renderWhoList();
+// ── персональний режим: підписуємо інтерфейс під людину ──
+if (PERSONAL) {
+  document.body.classList.add('personal');
+  document.querySelector('.sidebar-foot .avatar').textContent = ME.short;
+  document.querySelector('.sidebar-foot .u-name').textContent = ME.name;
+  document.querySelector('.sidebar-foot .u-role').textContent = ME.role;
+  document.querySelector('.sidebar-foot .avatar').style.background = ME.color;
+  const navTeam = [...document.querySelectorAll('.nav-item')]
+    .find(a => (a.textContent||'').includes('Аналітика команди'));
+  if (navTeam) navTeam.childNodes[navTeam.childNodes.length-1].textContent = ' Моя аналітика ';
+  const navLbl = [...document.querySelectorAll('.nav-label')]
+    .find(x => x.textContent.trim() === 'Команда');
+  if (navLbl) navLbl.textContent = 'Аналітика';
+  document.querySelector('.team-title').textContent = 'Моя аналітика';
+  // задачі створюються тільки на себе
+  const who = document.getElementById('mo-who');
+  who.value = PERSONAL;
+  who.disabled = true;
+  document.title = 'DABUDAI — ' + ME.name;
+}
+
 // підсвічуємо збережений горизонт
 document.querySelectorAll('#hz-seg .hz-btn').forEach(b => {
   const n = parseInt((b.getAttribute('onclick').match(/setHorizon\((\d+)/)||[])[1], 10);
   b.classList.toggle('on', n === HORIZON);
 });
 paintUp();
+paintAll();
 loadToday();
 </script>
 </body>
