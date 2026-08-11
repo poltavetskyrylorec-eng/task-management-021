@@ -644,11 +644,14 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
       <div class="team-title">Аналітика команди</div>
       <div class="team-sub" id="tm-period-sub"></div>
     </div>
-    <div class="seg" id="tm-seg">
-      <button class="seg-btn on" onclick="setTeamPeriod('today',this)">Сьогодні</button>
-      <button class="seg-btn" onclick="setTeamPeriod('week',this)">Тиждень</button>
-      <button class="seg-btn" onclick="setTeamPeriod('month',this)">Місяць</button>
-      <button class="seg-btn" onclick="setTeamPeriod('all',this)">Все</button>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <select class="fselect" id="tm-month" style="width:auto;min-width:150px;" onchange="onMonthPick()"></select>
+      <div class="seg" id="tm-seg">
+        <button class="seg-btn on" onclick="setTeamPeriod('today',this)">Сьогодні</button>
+        <button class="seg-btn" onclick="setTeamPeriod('week',this)">Тиждень</button>
+        <button class="seg-btn" onclick="setTeamPeriod('month',this)">Місяць</button>
+        <button class="seg-btn" onclick="setTeamPeriod('all',this)">Все</button>
+      </div>
     </div>
   </div>
 
@@ -664,6 +667,8 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
               <th class="num">Задач</th>
               <th class="num">Вик.</th>
               <th>Виконання</th>
+              <th class="num">Вчасно</th>
+              <th class="num">Затримка</th>
               <th class="num">Год. план</th>
               <th class="num">Год. факт</th>
               <th class="num">Простр.</th>
@@ -678,6 +683,11 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
         <div class="chart-head">% виконання по людях</div>
         <div class="chart-area" id="tm-chart"></div>
       </div>
+    </div>
+
+    <div class="chart-card" id="tm-detail-card">
+      <div class="chart-head" id="tm-detail-head">Деталізація</div>
+      <div id="tm-detail"></div>
     </div>
 
     <div class="chart-card">
@@ -867,6 +877,15 @@ function normalizeTask(t) {
   const mins = (minsRaw !== undefined && minsRaw !== null && !isNaN(parseInt(minsRaw,10)))
     ? parseInt(minsRaw,10) : 30;
 
+  // дати закриття/створення — потрібні для «вчасно» та історії по місяцях
+  const num = v => {
+    if (v === null || v === undefined || v === '') return null;
+    const n = Number(v);
+    return (!isNaN(n) && n > 0) ? (n < 1e12 ? n * 1000 : n) : null;
+  };
+  const closedMs  = num(t.closedMs);
+  const createdMs = num(t.createdMs);
+
   return {
     id: String(t.id),
     parentId: t.parentId ? String(t.parentId) : null,
@@ -876,6 +895,8 @@ function normalizeTask(t) {
     priority: t.priority || 'normal',
     mins,
     dueMs: due,            // ms або null — потрібно для тижня/місяця/кілець
+    closedMs,
+    createdMs,
     dueLabel,
     contextOnly: !!t.contextOnly,     // чужий батько — лише для дерева, не рахується
     hasKidsInSet: !!t.hasKidsInSet,   // має підзадачі в наборі → час не рахуємо
@@ -1569,6 +1590,27 @@ async function buildMonth(){
 // TEAM VIEW — зріз по всій команді
 // ════════════════════════════════════════════
 let TEAM_PERIOD = 'today'; // today | week | month | all
+let TEAM_MONTH  = null;    // 'YYYY-MM' — обраний історичний місяць
+let TEAM_STATS  = null;    // результат computeTeamStats для поточного періоду
+
+// селектор останніх 12 місяців
+(function buildMonthSelect(){
+  const sel = document.getElementById('tm-month');
+  if (!sel) return;
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(NOW.getFullYear(), NOW.getMonth() - i, 1);
+    const v = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    sel.innerHTML += `<option value="${v}"${i===0?' selected':''}>${MON_FULL[d.getMonth()]} ${d.getFullYear()}</option>`;
+  }
+  TEAM_MONTH = sel.value;
+})();
+
+function onMonthPick(){
+  TEAM_MONTH = document.getElementById('tm-month').value;
+  TEAM_PERIOD = 'month';
+  document.querySelectorAll('#tm-seg .seg-btn').forEach((b,i)=>b.classList.toggle('on', i===2));
+  buildTeam();
+}
 
 function setTeamPeriod(p, el){
   TEAM_PERIOD = p;
@@ -1577,76 +1619,155 @@ function setTeamPeriod(p, el){
   buildTeam();
 }
 
-// межі періоду + чи потрапляє задача в період
-function periodFilter(p){
-  const todayStart=new Date(); todayStart.setHours(0,0,0,0);
-  const todayEnd  =new Date(); todayEnd.setHours(23,59,59,999);
-  if (p==='all')   return { label:'Усі активні задачі', fn: t => t.bucket==='overdue'||t.bucket==='today'||t.bucket==='upcoming' };
-  if (p==='today') return { label:`Сьогодні · ${fmt(NOW)}`,
-    fn: t => (t.dueMs && t.dueMs>=todayStart.getTime() && t.dueMs<=todayEnd.getTime()) || (t.bucket==='overdue' && t.status!=='closed') };
-  if (p==='week') {
-    const a=MON_DATE.getTime(), b=SUN_DATE.getTime()+86399999;
-    return { label:`Тиждень ${WN} · ${fmt(MON_DATE)} – ${fmt(SUN_DATE)}`,
-      fn: t => (t.dueMs && t.dueMs>=a && t.dueMs<=b) || (t.bucket==='overdue' && t.status!=='closed') };
+// межі періоду в мс — рахує фронт, статистику рахує бекенд
+function periodRange(){
+  if (TEAM_PERIOD === 'today') {
+    const a=new Date(); a.setHours(0,0,0,0);
+    const b=new Date(); b.setHours(23,59,59,999);
+    return { from:a.getTime(), to:b.getTime(), label:`Сьогодні · ${fmt(NOW)}` };
   }
-  const ms=new Date(NOW.getFullYear(),NOW.getMonth(),1).setHours(0,0,0,0);
-  const me=new Date(NOW.getFullYear(),NOW.getMonth()+1,0).setHours(23,59,59,999);
-  return { label:`${MON_FULL[NOW.getMonth()]} ${NOW.getFullYear()}`,
-    fn: t => t.dueMs && t.dueMs>=ms && t.dueMs<=me };
+  if (TEAM_PERIOD === 'week') {
+    return { from:MON_DATE.getTime(), to:SUN_DATE.getTime()+86399999,
+             label:`Тиждень ${WN} · ${fmt(MON_DATE)} – ${fmt(SUN_DATE)}` };
+  }
+  if (TEAM_PERIOD === 'all') {
+    return { from:0, to:Date.now()+400*86400000, label:'Усі задачі' };
+  }
+  const [y,m] = (TEAM_MONTH || `${NOW.getFullYear()}-${String(NOW.getMonth()+1).padStart(2,'0')}`).split('-').map(Number);
+  const a=new Date(y, m-1, 1); a.setHours(0,0,0,0);
+  const b=new Date(y, m, 0);   b.setHours(23,59,59,999);
+  return { from:a.getTime(), to:b.getTime(), label:`${MON_FULL[m-1]} ${y}` };
 }
 
-function statsFor(list){
-  const real      = list.filter(countsForTasks);
-  const total     = real.length;
-  const done      = real.filter(t=>t.status==='closed').length;
-  const overdue   = real.filter(t=>t.bucket==='overdue' && t.status!=='closed').length;
-  const timeList  = list.filter(countsForTime);
-  const totalMins = timeList.reduce((s,t)=>s+t.mins,0);
-  const doneMins  = timeList.filter(t=>t.status==='closed').reduce((s,t)=>s+t.mins,0);
-  return {
-    total, done, overdue, totalMins, doneMins,
-    pct:   total>0 ? Math.round(done/total*100) : 0,
-    pctH:  totalMins>0 ? Math.round(doneMins/totalMins*100) : 0
-  };
-}
-
-function buildTeam(){
-  const { label, fn } = periodFilter(TEAM_PERIOD);
+async function buildTeam(){
+  const { from, to, label } = periodRange();
   document.getElementById('tm-period-sub').textContent = label;
+  hideBanner('team');
+  // Рахуємо ЛОКАЛЬНО з ALL_TASKS: getTasks уже віддав повний набір задач
+  // разом із закритими, тож будь-який з 12 місяців рахується миттєво
+  // й без жодного зайвого запиту до ClickUp (їхні ліміти на нас тиснуть).
+  TEAM_STATS = computeTeamStats(from, to);
+  renderTeam(from, to);
+}
 
-  const scoped = ALL_TASKS.filter(fn);
-  const rows = TEAM.map(m => {
-    const list = scoped.filter(t => t.assigneeId === m.id);
-    return Object.assign({ m, list }, statsFor(list));
+// ── ЛОГІКА РОЗРАХУНКУ (дзеркалить analyzeRange у Code.gs) ──
+// Кожна задача рахується РІВНО в одному періоді, інакше задача з дедлайном
+// 12-го і закриттям 17-го потрапила б і в тиждень плану, і в тиждень факту.
+// Пріоритет: дедлайн → закриття → створення. Дедлайн головніший навмисно:
+// питання дашборда — «чи виконано план серпня», тож серпнева задача лишається
+// серпневою навіть якщо її закрили у вересні, просто із запізненням.
+function anchorMs(t){
+  if (t.dueMs)    return t.dueMs;
+  if (t.closedMs) return t.closedMs;
+  return t.createdMs || null;
+}
+function inPeriod(t, from, to){
+  const a = anchorMs(t);
+  return a !== null && a >= from && a <= to;
+}
+
+function analyzeRange(list, from, to){
+  const now = Date.now();
+  const s = { total:0, done:0, open:0, onTime:0, late:0, overdueOpen:0, noDue:0,
+              minsPlan:0, minsDone:0, delaySum:0, delayN:0,
+              pri:{urgent:0,high:0,normal:0,low:0} };
+
+  list.forEach(t => {
+    if (t.contextOnly) return;              // чужий батько — лише контекст дерева
+    if (!inPeriod(t, from, to)) return;
+
+    s.total++;
+    if (!t.hasKidsInSet) s.minsPlan += t.mins;   // час лише з листків
+    if (!t.dueMs) s.noDue++;
+
+    if (t.status === 'closed') {
+      s.done++;
+      if (!t.hasKidsInSet) s.minsDone += t.mins;
+      if (t.dueMs && t.closedMs) {
+        if (t.closedMs <= t.dueMs) s.onTime++;
+        else { s.late++; s.delaySum += (t.closedMs - t.dueMs); s.delayN++; }
+      }
+    } else {
+      s.open++;
+      if (t.dueMs && t.dueMs < now) s.overdueOpen++;
+      if (s.pri[t.priority] !== undefined) s.pri[t.priority]++;
+    }
   });
 
+  s.pct  = s.total > 0 ? Math.round(s.done / s.total * 100) : 0;
+  s.pctH = s.minsPlan > 0 ? Math.round(s.minsDone / s.minsPlan * 100) : 0;
+  // вчасність — лише серед закритих задач, у яких БУВ дедлайн
+  s.onTimeBase = s.onTime + s.late;
+  s.onTimePct  = s.onTimeBase > 0 ? Math.round(s.onTime / s.onTimeBase * 100) : 0;
+  s.avgDelayDays = s.delayN > 0 ? Math.round(s.delaySum / s.delayN / 86400000 * 10) / 10 : 0;
+  s.hoursPlan = Math.round(s.minsPlan / 60 * 10) / 10;
+  s.hoursDone = Math.round(s.minsDone / 60 * 10) / 10;
+  return s;
+}
+
+function weeklyBreakdown(list, from, to){
+  if (!from || to - from > 400*86400000) return [];
+  const out = [];
+  const cur = new Date(from); cur.setHours(0,0,0,0);
+  const dow = cur.getDay() || 7;
+  cur.setDate(cur.getDate() - (dow - 1));      // до понеділка
+  let guard = 0;
+  while (cur.getTime() <= to && guard < 60) {
+    const a = cur.getTime(), b = a + 7*86400000 - 1;
+    const lo = Math.max(a, from), hi = Math.min(b, to);
+    const st = analyzeRange(list, lo, hi);
+    out.push({ w:'Т'+getWN(new Date(a)), total:st.total, done:st.done, pct:st.pct });
+    cur.setDate(cur.getDate() + 7);
+    guard++;
+  }
+  return out;
+}
+
+function computeTeamStats(from, to){
+  const members = TEAM.map(m => {
+    const list = ALL_TASKS.filter(t => t.assigneeId === m.id);
+    return { id:m.id, name:m.name, short:m.short,
+             stats: analyzeRange(list, from, to),
+             weeks: weeklyBreakdown(list, from, to) };
+  });
+  return { from, to, members, total: analyzeRange(ALL_TASKS, from, to) };
+}
+
+function renderTeam(from, to){
+  const S = TEAM_STATS;
+  if (!S || !S.members) return;
+
+  const rows = S.members.map(m => Object.assign({}, m, { color: member(m.id).color, role: member(m.id).role }));
+
   // ── картки ──
-  document.getElementById('tm-cards').innerHTML = rows.map(r => `
-    <div class="tm-card ${WHO===r.m.id?'sel':''}" style="--mc:${r.m.color}" onclick="setWho('${r.m.id}')" title="Клік — відфільтрувати трекер по цій людині">
+  document.getElementById('tm-cards').innerHTML = rows.map(r => {
+    const s = r.stats;
+    return `
+    <div class="tm-card ${WHO===r.id?'sel':''}" style="--mc:${r.color}" onclick="setWho('${r.id}')" title="Клік — відфільтрувати трекер по цій людині">
       <div class="tm-head">
-        <div class="tm-av" style="background:${r.m.color}">${r.m.short}</div>
-        <div><div class="tm-nm">${r.m.name}</div><div class="tm-rl">${r.m.role}</div></div>
-        <div class="tm-big" style="color:${colFor(r.pct)}">${r.pct}%</div>
+        <div class="tm-av" style="background:${r.color}">${r.short}</div>
+        <div><div class="tm-nm">${r.name}</div><div class="tm-rl">${r.role}</div></div>
+        <div class="tm-big" style="color:${colFor(s.pct)}">${s.pct}%</div>
       </div>
       <div class="tm-grid">
-        <div class="tm-cell"><div class="tm-cv" style="color:var(--accent)">${r.done}<span style="font-size:11px;color:var(--text3)">/${r.total}</span></div><div class="tm-cl">Виконано</div></div>
-        <div class="tm-cell"><div class="tm-cv" style="color:var(--accent2)">${(r.doneMins/60).toFixed(1)}<span style="font-size:11px;color:var(--text3)">/${(r.totalMins/60).toFixed(1)}г</span></div><div class="tm-cl">Години</div></div>
-        <div class="tm-cell"><div class="tm-cv" style="color:${r.overdue>0?'var(--danger)':'var(--text3)'}">${r.overdue}</div><div class="tm-cl">Прострочено</div></div>
+        <div class="tm-cell"><div class="tm-cv" style="color:var(--accent)">${s.done}<span style="font-size:11px;color:var(--text3)">/${s.total}</span></div><div class="tm-cl">Виконано</div></div>
+        <div class="tm-cell"><div class="tm-cv" style="color:${s.onTimePct>=80?'var(--accent)':s.onTimePct>=50?'var(--warn)':'var(--danger)'}">${s.onTimePct}%</div><div class="tm-cl">Вчасно</div></div>
+        <div class="tm-cell"><div class="tm-cv" style="color:${s.overdueOpen>0?'var(--danger)':'var(--text3)'}">${s.overdueOpen}</div><div class="tm-cl">Прострочено</div></div>
       </div>
       <div class="tm-bars">
         <div class="tm-brow">
-          <div class="tm-bmeta"><span>Задачі</span><span>${r.pct}%</span></div>
-          <div class="tm-btrack"><div class="tm-bfill" style="width:${r.pct}%;background:${r.m.color}"></div></div>
+          <div class="tm-bmeta"><span>Задачі</span><span>${s.done}/${s.total}</span></div>
+          <div class="tm-btrack"><div class="tm-bfill" style="width:${s.pct}%;background:${r.color}"></div></div>
         </div>
         <div class="tm-brow">
-          <div class="tm-bmeta"><span>Години</span><span>${r.pctH}%</span></div>
-          <div class="tm-btrack"><div class="tm-bfill" style="width:${r.pctH}%;background:${r.m.color};opacity:.5"></div></div>
+          <div class="tm-bmeta"><span>Години</span><span>${s.hoursDone}/${s.hoursPlan}г</span></div>
+          <div class="tm-btrack"><div class="tm-bfill" style="width:${s.pctH}%;background:${r.color};opacity:.5"></div></div>
         </div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
-  // ── порівняльна таблиця (+ підсумковий рядок) ──
-  const tot = statsFor(scoped);
+  // ── порівняльна таблиця ──
   const rowHTML = (av, nm, color, s, bold) => {
     const st = s.pct>=80?'done':s.pct>=50?'partial':'bad';
     const stLabel = s.pct>=80?'В нормі':s.pct>=50?'Відставання':'Критично';
@@ -1655,32 +1776,87 @@ function buildTeam(){
       <td class="num">${s.total}</td>
       <td class="num" style="color:var(--accent)">${s.done}</td>
       <td><div class="mini-prog"><div class="mp-track"><div class="mp-fill" style="width:${s.pct}%"></div></div><span class="mp-pct ${s.pct>=80?'great':s.pct>=50?'ok':'bad'}">${s.pct}%</span></div></td>
-      <td class="num">${(s.totalMins/60).toFixed(1)}г</td>
-      <td class="num" style="color:var(--accent2)">${(s.doneMins/60).toFixed(1)}г</td>
-      <td class="num" style="color:${s.overdue>0?'var(--danger)':'var(--text3)'}">${s.overdue}</td>
+      <td class="num" style="color:${s.onTimePct>=80?'var(--accent)':s.onTimePct>=50?'var(--warn)':'var(--danger)'}">${s.onTimePct}%</td>
+      <td class="num">${s.avgDelayDays>0?'+'+s.avgDelayDays+'д':'—'}</td>
+      <td class="num">${s.hoursPlan}г</td>
+      <td class="num" style="color:var(--accent2)">${s.hoursDone}г</td>
+      <td class="num" style="color:${s.overdueOpen>0?'var(--danger)':'var(--text3)'}">${s.overdueOpen}</td>
       <td><span class="sbadge ${st}">${s.total===0?'—':stLabel}</span></td>
     </tr>`;
   };
   document.getElementById('tm-tbody').innerHTML =
-    rows.map(r => rowHTML(r.m.short, r.m.name, r.m.color, r, false)).join('') +
-    rowHTML('ВС', 'Разом', '#7D8FA8', tot, true);
+    rows.map(r => rowHTML(r.short, r.name, r.color, r.stats, false)).join('') +
+    rowHTML('ВС', 'Разом', '#7D8FA8', S.total, true);
 
   // ── чарт ──
-  const maxPct = Math.max(100, ...rows.map(r=>r.pct));
+  const maxPct = Math.max(100, ...rows.map(r=>r.stats.pct));
   document.getElementById('tm-chart').innerHTML = rows.map(r => `
     <div class="c-bar-wrap">
-      <div class="c-bar" style="height:${Math.max(4, r.pct/maxPct*100)}%;background:${r.m.color}">
-        <div class="c-bar-val">${r.pct}%</div>
+      <div class="c-bar" style="height:${Math.max(4, r.stats.pct/maxPct*100)}%;background:${r.color}">
+        <div class="c-bar-val">${r.stats.pct}%</div>
       </div>
-      <div class="c-bar-label">${r.m.short}</div>
+      <div class="c-bar-label">${r.short}</div>
     </div>`).join('');
 
-  // ── задачі, згруповані по людях ──
+  renderDetail(rows);
+  renderTeamTasks(rows, from, to);
+}
+
+// ── деталізація по одній людині (або по всіх, якщо фільтр = Вся команда) ──
+function renderDetail(rows){
+  const sel = rows.filter(r => WHO === 'all' ? true : r.id === WHO);
+  document.getElementById('tm-detail-head').textContent =
+    WHO === 'all' ? 'Деталізація — усі' : 'Деталізація — ' + member(WHO).name;
+
+  document.getElementById('tm-detail').innerHTML = sel.map(r => {
+    const s = r.stats;
+    const cell = (v,l,c) => `<div class="tm-cell"><div class="tm-cv" style="color:${c||'var(--text)'}">${v}</div><div class="tm-cl">${l}</div></div>`;
+    const wk = (r.weeks||[]).filter(w=>w.total>0);
+    const maxW = Math.max(1, ...wk.map(w=>w.total));
+    return `
+    <div style="margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid var(--border)">
+      <div class="tm-grp-head" style="margin-bottom:12px">
+        <div class="tt-av" style="background:${r.color}">${r.short}</div>
+        <div style="font-size:12px;font-weight:700">${r.name}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:12px;margin-bottom:14px">
+        ${cell(s.total,'Задач у періоді')}
+        ${cell(s.done,'Виконано','var(--accent)')}
+        ${cell(s.open,'Відкрито','var(--accent2)')}
+        ${cell(s.onTime,'Вчасно','var(--accent)')}
+        ${cell(s.late,'Із запізненням','var(--warn)')}
+        ${cell(s.avgDelayDays>0?'+'+s.avgDelayDays+'д':'—','Сер. затримка','var(--warn)')}
+        ${cell(s.overdueOpen,'Прострочено зараз', s.overdueOpen>0?'var(--danger)':'var(--text3)')}
+        ${cell(s.noDue,'Без дедлайну','var(--text3)')}
+        ${cell(s.hoursPlan+'г','Год. план')}
+        ${cell(s.hoursDone+'г','Год. факт','var(--accent2)')}
+        ${cell(s.pri.urgent,'Терміново відкр.', s.pri.urgent>0?'var(--accent3)':'var(--text3)')}
+        ${cell(s.pri.high,'Високий відкр.','var(--text3)')}
+      </div>
+      ${wk.length ? `
+      <div class="chart-area" style="height:70px">
+        ${wk.map(w=>`<div class="c-bar-wrap">
+          <div class="c-bar" style="height:${w.total/maxW*100}%;background:${r.color};opacity:.35"></div>
+          <div class="c-bar" style="height:${w.done/maxW*100}%;background:${r.color};margin-top:-${w.done/maxW*100}%">
+            <div class="c-bar-val">${w.done}/${w.total}</div></div>
+          <div class="c-bar-label">${w.w}</div>
+        </div>`).join('')}
+      </div>` : ''}
+    </div>`;
+  }).join('') || '<div class="empty-state">Немає даних</div>';
+}
+
+// ── список задач по людях (з уже завантажених ALL_TASKS) ──
+function renderTeamTasks(rows, from, to){
+  const anchor = t => t.dueMs || t.closedMs || null;
   document.getElementById('tm-tasks').innerHTML = rows.map(r => {
-    const sorted = r.list.slice().sort((a,b)=>(a.dueMs||0)-(b.dueMs||0));
-    const body = sorted.length===0
+    const list = ALL_TASKS
+      .filter(t => t.assigneeId === r.id && !t.contextOnly)
+      .filter(t => { const a = anchor(t); return a !== null && a >= from && a <= to; })
+      .sort((a,b)=>(a.dueMs||0)-(b.dueMs||0));
+    const body = list.length===0
       ? `<div class="empty-state" style="padding:16px;font-size:11px;">Немає задач у цьому періоді</div>`
-      : sorted.map(t => {
+      : list.map(t => {
           const col = t.status==='closed' ? 'var(--accent)'
                     : t.bucket==='overdue' ? 'var(--danger)'
                     : t.bucket==='today'   ? 'var(--warn)' : 'var(--accent2)';
@@ -1693,14 +1869,16 @@ function buildTeam(){
         }).join('');
     return `<div>
       <div class="tm-grp-head">
-        <div class="tt-av" style="background:${r.m.color}">${r.m.short}</div>
-        <div style="font-size:12px;font-weight:700">${r.m.name}</div>
-        <div class="tm-grp-cnt">${r.done} / ${r.total} · ${r.pct}%</div>
+        <div class="tt-av" style="background:${r.color}">${r.short}</div>
+        <div style="font-size:12px;font-weight:700">${r.name}</div>
+        <div class="tm-grp-cnt">${r.stats.done} / ${r.stats.total} · ${r.stats.pct}%</div>
       </div>
       ${body}
     </div>`;
   }).join('');
 }
+
+
 
 // ════════════════════════════════════════════
 // NAV / UTIL
