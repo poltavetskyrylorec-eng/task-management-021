@@ -315,6 +315,22 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
 @keyframes tIn { from { transform:translateX(30px); opacity:0; } }
 @keyframes tOut { to { opacity:0; transform:translateX(8px); } }
 
+/* ══ ЗГОРТАНА СЕКЦІЯ «НАЙБЛИЖЧІ» ══ */
+.up-head { cursor:pointer; user-select:none; }
+.up-head:hover .sec-title { color:var(--text); }
+.up-caret { color:var(--text3); transition:transform .18s; flex-shrink:0; }
+.up-head.open .up-caret { transform:rotate(90deg); color:var(--accent2); }
+.up-right { display:flex; align-items:center; gap:8px; }
+.hz { display:flex; background:var(--surface2); border:1px solid var(--border); border-radius:7px; padding:2px; gap:1px; }
+.hz-btn { padding:3px 9px; border-radius:5px; border:none; background:transparent; cursor:pointer; font-family:var(--font); font-size:9.5px; font-weight:700; color:var(--text3); transition:all .15s; white-space:nowrap; }
+.hz-btn:hover { color:var(--text2); }
+.hz-btn.on { background:var(--surface3); color:var(--accent2); }
+.up-wrap { overflow:hidden; transition:max-height .25s ease, opacity .2s; max-height:4000px; opacity:1; }
+.up-wrap.collapsed { max-height:0; opacity:0; }
+.up-hint { display:flex; align-items:center; gap:8px; padding:11px 14px; margin-bottom:6px; border-radius:var(--r); background:rgba(0,229,160,.07); border:1px solid rgba(0,229,160,.22); font-size:11.5px; font-weight:600; color:var(--accent); cursor:pointer; }
+.up-hint.hidden { display:none; }
+.up-more { font-size:10px; color:var(--text3); font-weight:600; padding:8px 2px 0; }
+
 /* skeleton */
 .skel { background:linear-gradient(90deg,var(--surface2) 25%,var(--surface3) 50%,var(--surface2) 75%); background-size:200% 100%; animation:shim 1.5s infinite; border-radius:8px; height:60px; margin-bottom:6px; }
 @keyframes shim { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
@@ -476,8 +492,28 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
         </div>
       </div>
       <div>
-        <div class="sec-head"><div class="sec-title"><div class="sec-dot blue"></div>Найближчі</div><span class="sec-cnt" id="cnt-up">0</span></div>
-        <div id="list-up"></div>
+        <div class="up-hint hidden" id="up-hint" onclick="toggleUp(true)">
+          <span>✅</span><span id="up-hint-txt"></span>
+        </div>
+        <div class="sec-head up-head" onclick="toggleUp()">
+          <div class="sec-title">
+            <svg class="up-caret" id="up-caret" width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2l4 4-4 4"/></svg>
+            <div class="sec-dot blue"></div>Найближчі
+          </div>
+          <div class="up-right" onclick="event.stopPropagation()">
+            <div class="hz" id="hz-seg">
+              <button class="hz-btn" onclick="setHorizon(1,this)">Завтра</button>
+              <button class="hz-btn on" onclick="setHorizon(3,this)">3 дні</button>
+              <button class="hz-btn" onclick="setHorizon(7,this)">7 днів</button>
+              <button class="hz-btn" onclick="setHorizon(0,this)">Усі</button>
+            </div>
+            <span class="sec-cnt" id="cnt-up">0</span>
+          </div>
+        </div>
+        <div id="up-wrap" class="up-wrap collapsed">
+          <div id="list-up"></div>
+          <div class="up-more" id="up-more"></div>
+        </div>
       </div>
     </div>
 
@@ -704,6 +740,7 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
   <div class="mo-box">
     <div class="mo-title">Нова задача</div>
     <div class="fg"><label class="flabel">Назва задачі</label><input class="finput" id="mo-name" placeholder="Що потрібно зробити?"></div>
+    <div class="fg"><label class="flabel">Опис</label><textarea class="finput" id="mo-desc" rows="3" placeholder="Деталі, контекст, критерій готовності… (необов'язково)" style="resize:vertical;font-family:var(--font);line-height:1.45;"></textarea></div>
     <div class="frow">
       <div class="fg"><label class="flabel">Виконавець</label><select class="fselect" id="mo-who"></select></div>
       <div class="fg"><label class="flabel">Пріоритет</label><select class="fselect" id="mo-pri"><option>Нормальний</option><option>Високий</option><option>Терміновий</option></select></div>
@@ -972,6 +1009,85 @@ const PRI_TAG = { urgent:'Терміново', high:'Високий', normal:'',
 let BY_ID = {};
 let CHILDREN = {};
 
+// Порядок: найближчий дедлайн → вищий пріоритет → назва.
+// Задачі без дедлайну йдуть у кінець, а не на початок.
+const PRI_RANK = { urgent:0, high:1, normal:2, low:3 };
+function byDue(a, b) {
+  const da = a.dueMs || Infinity, db = b.dueMs || Infinity;
+  if (da !== db) return da - db;
+  const pa = PRI_RANK[a.priority] ?? 2, pb = PRI_RANK[b.priority] ?? 2;
+  if (pa !== pb) return pa - pb;
+  return (a.name || '').localeCompare(b.name || '', 'uk');
+}
+
+// Найгостріший bucket у піддереві: прострочено > сьогодні > найближчі.
+// Контекстні (чужі) задачі не враховуються — вони лише тло для дерева.
+const BUCKET_ORDER = ['overdue', 'today', 'upcoming'];
+const BUCKET_RANK  = { overdue:0, today:1, upcoming:2 };
+function subtreeRank(t, depth) {
+  depth = depth || 0;
+  if (depth > 12) return BUCKET_RANK[t.bucket] ?? 2;      // запобіжник від циклів
+  let best = t.contextOnly ? 99 : (BUCKET_RANK[t.bucket] ?? 2);
+  (CHILDREN[t.id] || []).forEach(c => { best = Math.min(best, subtreeRank(c, depth + 1)); });
+  return best === 99 ? (BUCKET_RANK[t.bucket] ?? 2) : best;
+}
+
+// Найближчий дедлайн у піддереві — за ним фільтруємо горизонт і сортуємо.
+// Батько з дедлайном «+9 дн» і підзадачею на завтра має поводитись як «завтра».
+function subtreeDue(t, depth) {
+  depth = depth || 0;
+  if (depth > 12) return t.dueMs || Infinity;
+  let best = t.contextOnly ? Infinity : (t.dueMs || Infinity);
+  (CHILDREN[t.id] || []).forEach(c => { best = Math.min(best, subtreeDue(c, depth + 1)); });
+  return best;
+}
+
+// Скільки реальних (не контекстних) задач буде показано в піддереві
+function countRendered(list, depth) {
+  depth = depth || 0;
+  if (depth > 12) return 0;
+  return (list || []).reduce((n, t) =>
+    n + (t.contextOnly ? 0 : 1) + countRendered(CHILDREN[t.id] || [], depth + 1), 0);
+}
+
+// ── ГОРИЗОНТ «НАЙБЛИЖЧІ» ──────────────────────────────
+// 0 = без обмеження. Зберігається між сесіями.
+let HORIZON = parseInt(localStorage.getItem('dabudai_horizon') ?? '3', 10);
+let UP_OPEN = localStorage.getItem('dabudai_up_open') === '1';
+let UP_AUTO = false;   // секцію відкрив автопідказник, а не людина
+
+function setHorizon(days, el){
+  HORIZON = days;
+  localStorage.setItem('dabudai_horizon', String(days));
+  document.querySelectorAll('#hz-seg .hz-btn').forEach(b => b.classList.remove('on'));
+  if (el) el.classList.add('on');
+  if (!UP_OPEN) toggleUp(true);   // змінив горизонт — очевидно, хоче побачити
+  renderTasks();
+}
+
+function toggleUp(forceOpen){
+  UP_OPEN = forceOpen === true ? true : !UP_OPEN;
+  localStorage.setItem('dabudai_up_open', UP_OPEN ? '1' : '0');
+  UP_AUTO = false;                // ручне рішення важливіше за автовідкриття
+  paintUp();
+}
+
+function paintUp(){
+  const wrap = document.getElementById('up-wrap');
+  const head = document.querySelector('.up-head');
+  if (!wrap || !head) return;
+  wrap.classList.toggle('collapsed', !UP_OPEN);
+  head.classList.toggle('open', UP_OPEN);
+}
+
+// межа горизонту в мс (кінець N-го дня від сьогодні)
+function horizonEnd(){
+  if (!HORIZON) return Infinity;
+  const d = new Date(); d.setHours(23,59,59,999);
+  d.setDate(d.getDate() + HORIZON);
+  return d.getTime();
+}
+
 function renderTasks() {
   // 1) індексуємо всі задачі за id
   BY_ID = {};
@@ -989,23 +1105,68 @@ function renderTasks() {
   // 3) корені = задачі без батька (або з батьком поза набором)
   const roots = TASKS.filter(t => !(t.parentId && BY_ID[t.parentId]));
 
-  // 4) корінь потрапляє у свій bucket разом з усім піддеревом
+  // 4) Корінь потрапляє в НАЙГОСТРІШУ секцію свого піддерева.
+  //    Раніше він ішов за власним дедлайном, тому батько з дедлайном «+9 дн»
+  //    тягнув у «Найближчі» підзадачу, яку треба зробити сьогодні:
+  //    секція «На сьогодні» показувала лічильник 2 і порожній список.
   const rootBuckets = { overdue:[], today:[], upcoming:[] };
-  roots.forEach(t => { if (rootBuckets[t.bucket]) rootBuckets[t.bucket].push(t); });
+  roots.forEach(t => {
+    const b = BUCKET_ORDER[subtreeRank(t)];
+    if (rootBuckets[b]) rootBuckets[b].push(t);
+  });
+
+  // Сортуємо за НАЙБЛИЖЧИМ дедлайном у піддереві, зростанням: найгостріше зверху.
+  // ClickUp з order_by=due_date віддає за спаданням, тому без цього
+  // задача на «+10 днів» опинялась вище, ніж «Сьогодні».
+  // Прострочені так само: найдавніша прострочка нагорі, вона найгостріша.
+  const bySubtree = (a,b) => {
+    const da = subtreeDue(a), db = subtreeDue(b);
+    if (da !== db) return da - db;
+    return byDue(a, b);
+  };
+  Object.keys(rootBuckets).forEach(k => rootBuckets[k].sort(bySubtree));
+
+  // Горизонт застосовуємо ЛИШЕ до «Найближчих»: прострочене й сьогоднішнє
+  // ховати не можна ні за яких налаштувань.
+  const hzEnd = horizonEnd();
+  const upShown  = rootBuckets.upcoming.filter(t => subtreeDue(t) <= hzEnd);
+  const upHidden = rootBuckets.upcoming.filter(t => subtreeDue(t) >  hzEnd);
 
   renderBucket('list-ov', rootBuckets.overdue, 'overdue');
   renderBucket('list-td', rootBuckets.today,   'today');
-  renderBucket('list-up', rootBuckets.upcoming,'upcoming');
+  renderBucket('list-up', upShown,             'upcoming');
 
-  // лічильники — рахуємо ВСІ задачі бакету (з підзадачами), не лише корені
-  const cnt = { overdue:0, today:0, upcoming:0 };
-  TASKS.forEach(t => { if (cnt[t.bucket] !== undefined) cnt[t.bucket]++; });
-  document.getElementById('cnt-ov').textContent = cnt.overdue;
-  document.getElementById('cnt-td').textContent = cnt.today;
-  document.getElementById('cnt-up').textContent = cnt.upcoming;
+  // Лічильник = скільки задач РЕАЛЬНО показано в секції (разом із вкладеними).
+  // Тепер цифра в заголовку завжди збігається з тим, що видно нижче.
+  const nOv = countRendered(rootBuckets.overdue);
+  const nTd = countRendered(rootBuckets.today);
+  const nUp = countRendered(upShown);
+  const nHidden = countRendered(upHidden);
+  document.getElementById('cnt-ov').textContent = nOv;
+  document.getElementById('cnt-td').textContent = nTd;
+  document.getElementById('cnt-up').textContent = nUp;
 
-  const badge = document.getElementById('badge-ov');
-  if (badge) badge.textContent = TASKS.filter(t => countsForTasks(t) && t.bucket==='overdue' && t.status!=='closed').length;
+  const more = document.getElementById('up-more');
+  if (more) more.textContent = nHidden > 0
+    ? `Ще ${nHidden} задач(і) за межами горизонту — натисни «Усі», щоб побачити`
+    : '';
+
+  // Підказка: прострочене й сьогоднішнє закриті — можна братись за наступні дні
+  const openLeft = TASKS.filter(t => countsForTasks(t) && t.status !== 'closed'
+                    && (t.bucket === 'overdue' || t.bucket === 'today')).length;
+  const hint = document.getElementById('up-hint');
+  if (hint) {
+    const show = openLeft === 0 && (nOv + nTd) > 0 && nUp > 0;
+    hint.classList.toggle('hidden', !show);
+    if (show) {
+      document.getElementById('up-hint-txt').textContent = UP_OPEN
+        ? 'Прострочене й сьогоднішнє закрито. Далі — найближчі дні.'
+        : `Прострочене й сьогоднішнє закрито. Відкрити найближчі ${HORIZON || ''} ${HORIZON ? 'дн.' : 'задачі'}?`;
+      // відкриваємо самі — але лише один раз і лише якщо людина не згортала вручну
+      if (!UP_OPEN && !UP_AUTO) { UP_OPEN = true; UP_AUTO = true; }
+    }
+  }
+  paintUp();
 
   updateAnalytics();
 }
@@ -1016,7 +1177,7 @@ function taskCardHTML(t, depth) {
   const priTag = (t.priority==='high'||t.priority==='urgent') ? `<span class="tag hi">${PRI_TAG[t.priority]}</span>` : '';
   const indent = depth > 0 ? `margin-left:${depth*24}px;border-left:2px solid var(--border);` : '';
   const prefix = depth === 1 ? '↳ ' : depth >= 2 ? '↳↳ ' : '';
-  const kids = (CHILDREN[t.id] || []).slice().sort((a,b)=>a.name.localeCompare(b.name,'uk'));
+  const kids = (CHILDREN[t.id] || []).slice().sort(byDue);
 
   // Контекстна (чужа батьківська) задача: показуємо для дерева, але без чекбокса і без обліку
   if (t.contextOnly) {
@@ -1077,14 +1238,17 @@ async function toggleTask(id) {
     return;
   }
   const card = document.getElementById('card-' + id);
-  const chk = card.querySelector('.tchk');
-  if (!chk) return;
-  const wasDone = chk.classList.contains('checked');
+  const chk = card ? card.querySelector('.tchk') : null;
+  // Картки може не бути в DOM: задача за межами горизонту «Найближчі»
+  // або в згорнутій секції. Модель і ClickUp однаково мають оновитись.
+  const wasDone = chk ? chk.classList.contains('checked') : (task && task.status === 'closed');
   const nextStatus = wasDone ? 'open' : 'closed';
 
   const paint = (st) => {
-    if (st === 'closed') { chk.classList.add('checked');    card.classList.add('done');    card.dataset.status='closed'; }
-    else                 { chk.classList.remove('checked'); card.classList.remove('done'); card.dataset.status='open';   }
+    if (chk && card) {
+      if (st === 'closed') { chk.classList.add('checked');    card.classList.add('done');    card.dataset.status='closed'; }
+      else                 { chk.classList.remove('checked'); card.classList.remove('done'); card.dataset.status='open';   }
+    }
     if (task) task.status = st;
     updateAnalytics();
     renderWhoList();
@@ -1218,6 +1382,10 @@ function updateAnalytics() {
   document.getElementById('r-hdone').textContent=hD+'г';
   document.getElementById('r-hleft').textContent=hL+'г';
 
+  // бейдж прострочки в сайдбарі — тут, щоб оновлювався одразу при відмітці
+  const badge = document.getElementById('badge-ov');
+  if (badge) badge.textContent = overdueOpen;
+
   document.getElementById('pri-urgent').textContent=pri.urgent;
   document.getElementById('pri-high').textContent=pri.high;
   document.getElementById('pri-normal').textContent=pri.normal;
@@ -1238,7 +1406,7 @@ function updateAnalytics() {
 // Фікс #7: dueMs проставляється, тож задача рахується у Тижні та Місяці.
 const PRI_FROM_UA = { 'Нормальний':'normal', 'Високий':'high', 'Терміновий':'urgent' };
 
-async function createTask({ name, assigneeId, priority, dueMs, mins }) {
+async function createTask({ name, desc, assigneeId, priority, dueMs, mins }) {
   const tmpId = 'm' + Date.now();
   const todayEnd = new Date(); todayEnd.setHours(23,59,59,999);
   const due = dueMs || todayEnd.getTime();
@@ -1265,6 +1433,7 @@ async function createTask({ name, assigneeId, priority, dueMs, mins }) {
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
         action: 'createTask', name,
+        description: desc || '',
         assigneeId, priority: optimistic.priority,
         dueMs: due, minutes: optimistic.mins
       })
@@ -1290,6 +1459,7 @@ function addTask(){
 
 function addDetailed(){
   const name=document.getElementById('mo-name').value.trim(); if(!name)return;
+  const desc=document.getElementById('mo-desc').value.trim();
   const mins=parseInt(document.getElementById('mo-mins').value)||20;
   const assigneeId=document.getElementById('mo-who').value;
   const priority=PRI_FROM_UA[document.getElementById('mo-pri').value] || 'normal';
@@ -1298,9 +1468,10 @@ function addDetailed(){
   if (dateVal) { const dt=new Date(dateVal+'T23:59:59'); if(!isNaN(dt)) dueMs=dt.getTime(); }
   closeModal();
   document.getElementById('mo-name').value='';
+  document.getElementById('mo-desc').value='';
   document.getElementById('mo-mins').value='';
   document.getElementById('mo-date').value='';
-  createTask({ name, assigneeId, priority, dueMs, mins });
+  createTask({ name, desc, assigneeId, priority, dueMs, mins });
 }
 
 // ════════════════════════════════════════════
@@ -1917,6 +2088,12 @@ document.getElementById('mo-who').innerHTML =
 
 // підпис у футері сайдбара — завжди founder
 renderWhoList();
+// підсвічуємо збережений горизонт
+document.querySelectorAll('#hz-seg .hz-btn').forEach(b => {
+  const n = parseInt((b.getAttribute('onclick').match(/setHorizon\((\d+)/)||[])[1], 10);
+  b.classList.toggle('on', n === HORIZON);
+});
+paintUp();
 loadToday();
 </script>
 </body>
