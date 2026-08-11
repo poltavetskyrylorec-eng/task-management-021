@@ -318,6 +318,66 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
 /* skeleton */
 .skel { background:linear-gradient(90deg,var(--surface2) 25%,var(--surface3) 50%,var(--surface2) 75%); background-size:200% 100%; animation:shim 1.5s infinite; border-radius:8px; height:60px; margin-bottom:6px; }
 @keyframes shim { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+/* ══ TEAM SWITCHER (sidebar) ══ */
+.who-list { display:flex; flex-direction:column; gap:2px; }
+.who-item { display:flex; align-items:center; gap:8px; padding:7px 10px; border-radius:8px; cursor:pointer; border:1px solid transparent; transition:all .15s; }
+.who-item:hover { background:var(--surface2); }
+.who-item.on { background:rgba(0,229,160,.07); border-color:rgba(0,229,160,.16); }
+.who-av { width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:8px; font-weight:800; color:#07090E; flex-shrink:0; }
+.who-name { font-size:11.5px; font-weight:600; color:var(--text2); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.who-item.on .who-name { color:var(--text); }
+.who-cnt { font-size:9px; font-weight:700; color:var(--text3); flex-shrink:0; }
+
+/* ══ TEAM VIEW ══ */
+.team-top { background:var(--surface); border-bottom:1px solid var(--border); padding:18px 28px; position:sticky; top:0; z-index:20; display:flex; align-items:center; justify-content:space-between; gap:20px; }
+.team-title { font-size:19px; font-weight:800; }
+.team-sub { font-size:10px; color:var(--text3); font-weight:600; margin-top:3px; }
+.seg { display:flex; background:var(--surface2); border:1px solid var(--border); border-radius:9px; padding:3px; gap:2px; }
+.seg-btn { padding:6px 14px; border-radius:6px; font-family:var(--font); font-size:11px; font-weight:700; color:var(--text3); background:transparent; border:none; cursor:pointer; transition:all .15s; white-space:nowrap; }
+.seg-btn:hover { color:var(--text2); }
+.seg-btn.on { background:var(--surface3); color:var(--accent); }
+.team-body { padding:22px 28px 28px; display:flex; flex-direction:column; gap:16px; }
+
+.tm-cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; }
+.tm-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 18px; position:relative; overflow:hidden; cursor:pointer; transition:all .15s; }
+.tm-card::after { content:''; position:absolute; bottom:0; left:0; right:0; height:2px; background:var(--mc,var(--accent)); }
+.tm-card:hover { border-color:rgba(255,255,255,.09); }
+.tm-card.sel { border-color:var(--mc,var(--accent)); }
+.tm-head { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.tm-av { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; color:#07090E; flex-shrink:0; }
+.tm-nm { font-size:13px; font-weight:700; line-height:1.2; }
+.tm-rl { font-size:9px; color:var(--text3); font-weight:600; margin-top:1px; }
+.tm-big { margin-left:auto; font-size:26px; font-weight:800; line-height:1; }
+.tm-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:12px; }
+.tm-cell { display:flex; flex-direction:column; gap:2px; }
+.tm-cv { font-size:16px; font-weight:800; line-height:1; }
+.tm-cl { font-size:8.5px; color:var(--text3); font-weight:600; }
+.tm-bars { display:flex; flex-direction:column; gap:7px; }
+.tm-brow { display:flex; flex-direction:column; gap:3px; }
+.tm-bmeta { display:flex; justify-content:space-between; font-size:8.5px; color:var(--text3); font-weight:600; }
+.tm-btrack { height:4px; background:var(--surface3); border-radius:99px; overflow:hidden; }
+.tm-bfill { height:100%; border-radius:99px; transition:width .5s; }
+
+.tm-split { display:grid; grid-template-columns:1fr 400px; gap:14px; align-items:start; }
+.tt { width:100%; border-collapse:collapse; }
+.tt th { padding:10px 12px; text-align:left; font-size:8.5px; letter-spacing:1.2px; text-transform:uppercase; color:var(--text3); border-bottom:1px solid var(--border); background:var(--surface2); font-weight:700; white-space:nowrap; }
+.tt td { padding:11px 12px; border-bottom:1px solid rgba(30,40,64,.5); font-size:12px; font-weight:600; vertical-align:middle; }
+.tt tr:last-child td { border-bottom:none; }
+.tt tr:hover td { background:rgba(255,255,255,.015); }
+.tt .num { text-align:right; font-variant-numeric:tabular-nums; }
+.tt-who { display:flex; align-items:center; gap:8px; }
+.tt-av { width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:8px; font-weight:800; color:#07090E; flex-shrink:0; }
+
+.tm-tasklist { display:flex; flex-direction:column; gap:14px; }
+.tm-grp-head { display:flex; align-items:center; gap:9px; margin-bottom:8px; }
+.tm-grp-cnt { margin-left:auto; font-size:9px; color:var(--text3); background:var(--surface2); border:1px solid var(--border); padding:1px 7px; border-radius:8px; font-weight:700; }
+.tm-trow { display:flex; align-items:center; gap:10px; padding:8px 11px; background:var(--surface); border:1px solid var(--border); border-radius:8px; margin-bottom:5px; }
+.tm-trow.done { opacity:.4; }
+.tm-trow.done .tm-tn { text-decoration:line-through; }
+.tm-tdot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+.tm-tn { font-size:12px; font-weight:600; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tm-tmeta { font-size:9px; color:var(--text3); font-weight:600; flex-shrink:0; }
 </style>
 </head>
 <body>
@@ -343,10 +403,12 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
       Місяць
     </a>
     <div class="nav-label" style="margin-top:10px;">Команда</div>
-    <a class="nav-item" style="opacity:.4;pointer-events:none;">
+    <a class="nav-item" onclick="switchView('team',this)">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="5" r="3"/><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
-      Команда <span style="font-size:8px;color:var(--text3);margin-left:auto;font-weight:600;">soon</span>
+      Аналітика команди
     </a>
+    <div class="nav-label" style="margin-top:10px;">Фільтр по людині</div>
+    <div class="who-list" id="who-list"></div>
   </div>
   <div class="sidebar-foot">
     <div class="avatar">КП</div>
@@ -573,6 +635,58 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
   </div>
 </div>
 
+<!-- ══ TEAM ══ -->
+<div class="view" id="view-team">
+  <div class="banner load hidden" id="banner-team"><span class="dot-pulse"></span><span></span></div>
+
+  <div class="team-top">
+    <div>
+      <div class="team-title">Аналітика команди</div>
+      <div class="team-sub" id="tm-period-sub"></div>
+    </div>
+    <div class="seg" id="tm-seg">
+      <button class="seg-btn on" onclick="setTeamPeriod('today',this)">Сьогодні</button>
+      <button class="seg-btn" onclick="setTeamPeriod('week',this)">Тиждень</button>
+      <button class="seg-btn" onclick="setTeamPeriod('month',this)">Місяць</button>
+      <button class="seg-btn" onclick="setTeamPeriod('all',this)">Все</button>
+    </div>
+  </div>
+
+  <div class="team-body">
+    <div class="tm-cards" id="tm-cards"></div>
+
+    <div class="tm-split">
+      <div class="week-table-card">
+        <table class="tt">
+          <thead>
+            <tr>
+              <th>Виконавець</th>
+              <th class="num">Задач</th>
+              <th class="num">Вик.</th>
+              <th>Виконання</th>
+              <th class="num">Год. план</th>
+              <th class="num">Год. факт</th>
+              <th class="num">Простр.</th>
+              <th>Статус</th>
+            </tr>
+          </thead>
+          <tbody id="tm-tbody"></tbody>
+        </table>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-head">% виконання по людях</div>
+        <div class="chart-area" id="tm-chart"></div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-head">Задачі по виконавцях</div>
+      <div class="tm-tasklist" id="tm-tasks"></div>
+    </div>
+  </div>
+</div>
+
 </main>
 
 <!-- MODAL -->
@@ -581,7 +695,7 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
     <div class="mo-title">Нова задача</div>
     <div class="fg"><label class="flabel">Назва задачі</label><input class="finput" id="mo-name" placeholder="Що потрібно зробити?"></div>
     <div class="frow">
-      <div class="fg"><label class="flabel">Виконавець</label><select class="fselect" id="mo-who"><option>Кирило П.</option><option>Катя К.</option><option>Іллі</option></select></div>
+      <div class="fg"><label class="flabel">Виконавець</label><select class="fselect" id="mo-who"></select></div>
       <div class="fg"><label class="flabel">Пріоритет</label><select class="fselect" id="mo-pri"><option>Нормальний</option><option>Високий</option><option>Терміновий</option></select></div>
     </div>
     <div class="frow">
@@ -609,6 +723,42 @@ const GS_URL = 'https://script.google.com/macros/s/AKfycbzScxFH5InOW__W-je2mVUML
 const USE_MOCK = false;
 
 // ════════════════════════════════════════════
+// TEAM — має 1:1 збігатися з TEAM у Apps Script
+// id = ClickUp user id
+// ════════════════════════════════════════════
+const TEAM = [
+  { id:'266462192', short:'КП', name:'Кирило П.', role:'Founder',     color:'#00E5A0' },
+  { id:'82709880',  short:'КК', name:'Катя К.',   role:'Operations',  color:'#0EA5E9' },
+  { id:'100779346', short:'ІС', name:'Ілля С.',   role:'Engineering', color:'#FF6B35' }
+];
+const TEAM_BY_ID = Object.fromEntries(TEAM.map(m => [m.id, m]));
+function member(id){ return TEAM_BY_ID[String(id)] || { id:String(id), short:'??', name:'Невідомий', role:'—', color:'#7D8FA8' }; }
+
+// активний фільтр: 'all' або ClickUp user id
+let WHO = localStorage.getItem('dabudai_who') || 'all';
+
+// ════════════════════════════════════════════
+// SAFE FETCH — таймаут + перевірка res.ok (фікс #5)
+// ════════════════════════════════════════════
+async function api(path, opts, timeoutMs) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), timeoutMs || 25000);
+  try {
+    const res = await fetch(path, Object.assign({ signal: ctl.signal }, opts || {}));
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const txt = await res.text();
+    let json;
+    try { json = JSON.parse(txt); }
+    catch { throw new Error('Бекенд повернув не JSON (перевір деплой Apps Script)'); }
+    if (json && json.error) throw new Error(json.error);
+    return json;
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('Таймаут запиту до бекенду');
+    throw e;
+  } finally { clearTimeout(timer); }
+}
+
+// ════════════════════════════════════════════
 // DATE
 // ════════════════════════════════════════════
 const NOW = new Date();
@@ -622,7 +772,15 @@ document.getElementById('p-date').textContent = `${NOW.getDate()} ${MON_UA[NOW.g
 document.getElementById('m-title').textContent = `${MON_FULL[NOW.getMonth()]} ${NOW.getFullYear()}`;
 
 function getMon(d){ const day=d.getDay(),diff=(day===0)?-6:1-day,m=new Date(d); m.setDate(d.getDate()+diff); m.setHours(0,0,0,0); return m; }
-function getWN(d){ const s=new Date(d.getFullYear(),0,1); return Math.ceil(((d-s)/86400000+s.getDay()+1)/7); }
+// Фікс #6: номер тижня за ISO 8601 (тиждень починається з понеділка,
+// перший тиждень року — той, що містить перший четвер)
+function getWN(d){
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = t.getUTCDay() || 7;
+  t.setUTCDate(t.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(t.getUTCFullYear(), 0, 1));
+  return Math.ceil(((t - yearStart) / 86400000 + 1) / 7);
+}
 function fmt(d){ return `${d.getDate()} ${MON_UA[d.getMonth()]}`; }
 const MON_DATE = getMon(NOW);
 const SUN_DATE = new Date(MON_DATE); SUN_DATE.setDate(MON_DATE.getDate()+6);
@@ -634,8 +792,10 @@ document.getElementById('w-range').textContent = `${fmt(MON_DATE)} – ${fmt(SUN
 // ════════════════════════════════════════════
 // STATE — заповнюється з ClickUp через n8n
 // ════════════════════════════════════════════
-let TASKS = []; // { id, name, status('open'|'closed'), bucket('overdue'|'today'|'upcoming'),
-                //   priority('urgent'|'high'|'normal'|'low'), mins, dueLabel, url, assignee }
+let ALL_TASKS = []; // задачі ВСІЄЇ команди — джерело правди
+let TASKS = [];     // зріз під активний фільтр WHO — з ним працюють Сьогодні/Тиждень/Місяць
+                    // { id, name, status('open'|'closed'), bucket('overdue'|'today'|'upcoming'),
+                    //   priority, mins, dueMs, dueLabel, url, assigneeId, assignee }
 
 // ── MOCK дані (формат, який має повертати n8n) ──
 function mockTasks() {
@@ -720,8 +880,44 @@ function normalizeTask(t) {
     contextOnly: !!t.contextOnly,     // чужий батько — лише для дерева, не рахується
     hasKidsInSet: !!t.hasKidsInSet,   // має підзадачі в наборі → час не рахуємо
     url: t.url || ('https://app.clickup.com/t/' + t.id),
-    assignee: 'КП'
+    assigneeId: t.assigneeId ? String(t.assigneeId) : null,
+    assignee: t.assigneeId ? member(t.assigneeId).short : '—'
   };
+}
+
+// ════════════════════════════════════════════
+// FILTER — застосовує WHO до ALL_TASKS
+// ════════════════════════════════════════════
+function applyFilter() {
+  TASKS = (WHO === 'all')
+    ? ALL_TASKS.slice()
+    : ALL_TASKS.filter(t => t.assigneeId === WHO);
+  renderTasks();
+  renderWhoList();
+  if (document.getElementById('view-week').classList.contains('active'))  buildWeek();
+  if (document.getElementById('view-month').classList.contains('active')) buildMonth();
+  if (document.getElementById('view-team').classList.contains('active'))  buildTeam();
+}
+
+function setWho(id) {
+  WHO = id;
+  localStorage.setItem('dabudai_who', id);
+  applyFilter();
+}
+
+function renderWhoList() {
+  const el = document.getElementById('who-list');
+  if (!el) return;
+  const rows = [{ id:'all', short:'ВС', name:'Вся команда', color:'#7D8FA8' }].concat(TEAM);
+  el.innerHTML = rows.map(m => {
+    const list = m.id === 'all' ? ALL_TASKS : ALL_TASKS.filter(t => t.assigneeId === m.id);
+    const open = list.filter(t => countsForTasks(t) && t.status !== 'closed').length;
+    return `<div class="who-item ${WHO===m.id?'on':''}" onclick="setWho('${m.id}')">
+      <div class="who-av" style="background:${m.color}">${m.short}</div>
+      <div class="who-name">${m.name}</div>
+      <div class="who-cnt">${open}</div>
+    </div>`;
+  }).join('');
 }
 
 async function loadToday() {
@@ -732,19 +928,16 @@ async function loadToday() {
   try {
     if (USE_MOCK) {
       await new Promise(r => setTimeout(r, 700));
-      TASKS = mockTasks();
+      ALL_TASKS = mockTasks();
     } else {
-      const res = await fetch(GS_URL + '?action=getTasks');
-      const data = await res.json();
-      TASKS = (data.tasks || []).map(normalizeTask).filter(Boolean);
+      // scope=team — бекенд віддає задачі ВСІХ людей з TEAM одним запитом
+      const data = await api(GS_URL + '?action=getTasks&scope=team');
+      ALL_TASKS = (data.tasks || []).map(normalizeTask).filter(Boolean);
     }
-    renderTasks();
+    applyFilter();
     hideBanner('today');
     document.getElementById('last-sync').textContent =
       'Оновлено о ' + new Date().toLocaleTimeString('uk-UA', {hour:'2-digit', minute:'2-digit'});
-    // якщо відкрита вкладка тижня/місяця — перерахувати з новими задачами
-    if (document.getElementById('view-week').classList.contains('active'))  buildWeek();
-    if (document.getElementById('view-month').classList.contains('active')) buildMonth();
   } catch(e) {
     showBanner('today','err','Помилка завантаження: ' + e.message);
   } finally {
@@ -866,34 +1059,42 @@ async function toggleTask(id) {
   const chk = card.querySelector('.tchk');
   if (!chk) return;
   const wasDone = chk.classList.contains('checked');
+  const nextStatus = wasDone ? 'open' : 'closed';
+
+  const paint = (st) => {
+    if (st === 'closed') { chk.classList.add('checked');    card.classList.add('done');    card.dataset.status='closed'; }
+    else                 { chk.classList.remove('checked'); card.classList.remove('done'); card.dataset.status='open';   }
+    if (task) task.status = st;
+    updateAnalytics();
+    renderWhoList();
+  };
 
   // optimistic UI
-  if (wasDone) { chk.classList.remove('checked'); card.classList.remove('done'); card.dataset.status='open'; if(task)task.status='open'; }
-  else         { chk.classList.add('checked');    card.classList.add('done');    card.dataset.status='closed'; if(task)task.status='closed'; }
-  updateAnalytics();
+  paint(nextStatus);
 
-  if (wasDone) { toast('↩','Відмічено як невиконане'); return; }
+  const isLocal = USE_MOCK || String(id).startsWith('m') || String(id).startsWith('td');
+  if (isLocal) { toast(wasDone ? '↩' : '✅', (task?.name||'').substring(0,28) + '…'); return; }
 
-  // Закриваємо задачу в ClickUp ЧЕРЕЗ Apps Script (токен лишається на бекенді)
-  if (!USE_MOCK && !String(id).startsWith('m') && !String(id).startsWith('td')) {
-    try {
-      await fetch(GS_URL, {
-        method: 'POST',
-        // text/plain уникає CORS-preflight для Apps Script
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({
-          action: 'closeTask',
-          taskId: id,
-          taskName: task ? task.name : '',
-          durationMin: task ? task.mins : 0
-        })
-      });
-      toast('✅','ClickUp оновлено');
-    } catch(e) {
-      toast('⚠️','Не вдалось оновити ClickUp: ' + e.message);
-    }
-  } else {
-    toast('✅', (task?.name||'').substring(0,28) + '…');
+  // Синхронізуємо з ClickUp ЧЕРЕЗ Apps Script (токен лишається на бекенді).
+  // Фікс #4: зняття галочки теж їде на бекенд (action=reopenTask).
+  try {
+    await api(GS_URL, {
+      method: 'POST',
+      // text/plain уникає CORS-preflight для Apps Script
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: wasDone ? 'reopenTask' : 'closeTask',
+        taskId: id,
+        taskName: task ? task.name : '',
+        assigneeId: task ? task.assigneeId : null,
+        durationMin: task ? task.mins : 0
+      })
+    });
+    toast(wasDone ? '↩' : '✅', 'ClickUp оновлено');
+  } catch(e) {
+    // Фікс #3: відкат UI, щоб дашборд не брехав про стан ClickUp
+    paint(wasDone ? 'closed' : 'open');
+    toast('⚠️','ClickUp не оновлено: ' + e.message);
   }
 }
 
@@ -1011,18 +1212,74 @@ function updateAnalytics() {
 // ════════════════════════════════════════════
 // ADD TASK (manual)
 // ════════════════════════════════════════════
+// Фікс #1: задачі реально створюються в ClickUp, а не живуть до першого F5.
+// Фікс #2: виконавець / пріоритет / дедлайн з модалки більше не ігноруються.
+// Фікс #7: dueMs проставляється, тож задача рахується у Тижні та Місяці.
+const PRI_FROM_UA = { 'Нормальний':'normal', 'Високий':'high', 'Терміновий':'urgent' };
+
+async function createTask({ name, assigneeId, priority, dueMs, mins }) {
+  const tmpId = 'm' + Date.now();
+  const todayEnd = new Date(); todayEnd.setHours(23,59,59,999);
+  const due = dueMs || todayEnd.getTime();
+  const dueDay = new Date(due); dueDay.setHours(0,0,0,0);
+  const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  const d = Math.round((dueDay.getTime() - todayStart.getTime()) / 86400000);
+
+  const optimistic = {
+    id: tmpId, parentId: null, name, status: 'open',
+    bucket: d < 0 ? 'overdue' : d === 0 ? 'today' : 'upcoming',
+    priority: priority || 'normal', mins: mins || 20, dueMs: due,
+    dueLabel: d < 0 ? d + ' дн.' : d === 0 ? 'Сьогодні' : d === 1 ? 'Завтра' : '+' + d + ' дн.',
+    contextOnly: false, hasKidsInSet: false, url: '#',
+    assigneeId: assigneeId, assignee: member(assigneeId).short
+  };
+  ALL_TASKS.push(optimistic);
+  applyFilter();
+
+  if (USE_MOCK) { toast('📝', `«${name}» додано (mock)`); return; }
+
+  try {
+    const r = await api(GS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: 'createTask', name,
+        assigneeId, priority: optimistic.priority,
+        dueMs: due, minutes: optimistic.mins
+      })
+    });
+    // підміняємо тимчасовий id на реальний ClickUp id
+    const real = ALL_TASKS.find(t => t.id === tmpId);
+    if (real && r && r.id) { real.id = String(r.id); real.url = r.url || ('https://app.clickup.com/t/' + r.id); }
+    applyFilter();
+    toast('✅', `«${name}» створено в ClickUp`);
+  } catch (e) {
+    ALL_TASKS = ALL_TASKS.filter(t => t.id !== tmpId);
+    applyFilter();
+    toast('⚠️', 'Не створено: ' + e.message);
+  }
+}
+
 function addTask(){
   const inp=document.getElementById('add-inp'); const v=inp.value.trim(); if(!v)return;
-  const id='m'+Date.now();
-  TASKS.push({ id, name:v, status:'open', bucket:'today', priority:'normal', mins:20, dueLabel:'Сьогодні', url:'#', assignee:'КП' });
-  renderTasks(); inp.value=''; toast('📝',`«${v}» додано`);
+  inp.value='';
+  const who = (WHO === 'all') ? TEAM[0].id : WHO;   // у режимі «Вся команда» пишемо на себе
+  createTask({ name:v, assigneeId:who, priority:'normal', dueMs:null, mins:20 });
 }
+
 function addDetailed(){
   const name=document.getElementById('mo-name').value.trim(); if(!name)return;
   const mins=parseInt(document.getElementById('mo-mins').value)||20;
-  const id='m'+Date.now();
-  TASKS.push({ id, name, status:'open', bucket:'today', priority:'normal', mins, dueLabel:'Сьогодні', url:'#', assignee:'КП' });
-  renderTasks(); closeModal(); toast('📝',`«${name}» додано`);
+  const assigneeId=document.getElementById('mo-who').value;
+  const priority=PRI_FROM_UA[document.getElementById('mo-pri').value] || 'normal';
+  const dateVal=document.getElementById('mo-date').value;
+  let dueMs=null;
+  if (dateVal) { const dt=new Date(dateVal+'T23:59:59'); if(!isNaN(dt)) dueMs=dt.getTime(); }
+  closeModal();
+  document.getElementById('mo-name').value='';
+  document.getElementById('mo-mins').value='';
+  document.getElementById('mo-date').value='';
+  createTask({ name, assigneeId, priority, dueMs, mins });
 }
 
 // ════════════════════════════════════════════
@@ -1171,19 +1428,21 @@ async function loadCarryoverSnapshot(weekKey, tasksNow, minsNow, mon) {
 
   if (USE_MOCK) return;
   try {
-    const res = await fetch(GS_URL + '?action=getWeekSnapshot&weekStart=' + encodeURIComponent(weekKey));
-    const snap = await res.json();
+    // снапшот прив'язаний до людини: у кожного свій перенос прострочки
+    const q = '&who=' + encodeURIComponent(WHO);
+    const snap = await api(GS_URL + '?action=getWeekSnapshot&weekStart=' + encodeURIComponent(weekKey) + q);
     if (snap && snap.exists) {
       // знімок є — показуємо ЗАМОРОЖЕНЕ значення
       render(snap.carriedTasks, snap.carriedHours, true);
     } else {
       // знімка немає — фіксуємо поточне значення один раз
-      await fetch(GS_URL, {
+      await api(GS_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({
           action: 'setWeekSnapshot',
           weekStart: weekKey,
+          who: WHO,
           carriedTasks: tasksNow,
           carriedHours: minsNow
         })
@@ -1307,6 +1566,143 @@ async function buildMonth(){
 }
 
 // ════════════════════════════════════════════
+// TEAM VIEW — зріз по всій команді
+// ════════════════════════════════════════════
+let TEAM_PERIOD = 'today'; // today | week | month | all
+
+function setTeamPeriod(p, el){
+  TEAM_PERIOD = p;
+  document.querySelectorAll('#tm-seg .seg-btn').forEach(b=>b.classList.remove('on'));
+  if(el) el.classList.add('on');
+  buildTeam();
+}
+
+// межі періоду + чи потрапляє задача в період
+function periodFilter(p){
+  const todayStart=new Date(); todayStart.setHours(0,0,0,0);
+  const todayEnd  =new Date(); todayEnd.setHours(23,59,59,999);
+  if (p==='all')   return { label:'Усі активні задачі', fn: t => t.bucket==='overdue'||t.bucket==='today'||t.bucket==='upcoming' };
+  if (p==='today') return { label:`Сьогодні · ${fmt(NOW)}`,
+    fn: t => (t.dueMs && t.dueMs>=todayStart.getTime() && t.dueMs<=todayEnd.getTime()) || (t.bucket==='overdue' && t.status!=='closed') };
+  if (p==='week') {
+    const a=MON_DATE.getTime(), b=SUN_DATE.getTime()+86399999;
+    return { label:`Тиждень ${WN} · ${fmt(MON_DATE)} – ${fmt(SUN_DATE)}`,
+      fn: t => (t.dueMs && t.dueMs>=a && t.dueMs<=b) || (t.bucket==='overdue' && t.status!=='closed') };
+  }
+  const ms=new Date(NOW.getFullYear(),NOW.getMonth(),1).setHours(0,0,0,0);
+  const me=new Date(NOW.getFullYear(),NOW.getMonth()+1,0).setHours(23,59,59,999);
+  return { label:`${MON_FULL[NOW.getMonth()]} ${NOW.getFullYear()}`,
+    fn: t => t.dueMs && t.dueMs>=ms && t.dueMs<=me };
+}
+
+function statsFor(list){
+  const real      = list.filter(countsForTasks);
+  const total     = real.length;
+  const done      = real.filter(t=>t.status==='closed').length;
+  const overdue   = real.filter(t=>t.bucket==='overdue' && t.status!=='closed').length;
+  const timeList  = list.filter(countsForTime);
+  const totalMins = timeList.reduce((s,t)=>s+t.mins,0);
+  const doneMins  = timeList.filter(t=>t.status==='closed').reduce((s,t)=>s+t.mins,0);
+  return {
+    total, done, overdue, totalMins, doneMins,
+    pct:   total>0 ? Math.round(done/total*100) : 0,
+    pctH:  totalMins>0 ? Math.round(doneMins/totalMins*100) : 0
+  };
+}
+
+function buildTeam(){
+  const { label, fn } = periodFilter(TEAM_PERIOD);
+  document.getElementById('tm-period-sub').textContent = label;
+
+  const scoped = ALL_TASKS.filter(fn);
+  const rows = TEAM.map(m => {
+    const list = scoped.filter(t => t.assigneeId === m.id);
+    return Object.assign({ m, list }, statsFor(list));
+  });
+
+  // ── картки ──
+  document.getElementById('tm-cards').innerHTML = rows.map(r => `
+    <div class="tm-card ${WHO===r.m.id?'sel':''}" style="--mc:${r.m.color}" onclick="setWho('${r.m.id}')" title="Клік — відфільтрувати трекер по цій людині">
+      <div class="tm-head">
+        <div class="tm-av" style="background:${r.m.color}">${r.m.short}</div>
+        <div><div class="tm-nm">${r.m.name}</div><div class="tm-rl">${r.m.role}</div></div>
+        <div class="tm-big" style="color:${colFor(r.pct)}">${r.pct}%</div>
+      </div>
+      <div class="tm-grid">
+        <div class="tm-cell"><div class="tm-cv" style="color:var(--accent)">${r.done}<span style="font-size:11px;color:var(--text3)">/${r.total}</span></div><div class="tm-cl">Виконано</div></div>
+        <div class="tm-cell"><div class="tm-cv" style="color:var(--accent2)">${(r.doneMins/60).toFixed(1)}<span style="font-size:11px;color:var(--text3)">/${(r.totalMins/60).toFixed(1)}г</span></div><div class="tm-cl">Години</div></div>
+        <div class="tm-cell"><div class="tm-cv" style="color:${r.overdue>0?'var(--danger)':'var(--text3)'}">${r.overdue}</div><div class="tm-cl">Прострочено</div></div>
+      </div>
+      <div class="tm-bars">
+        <div class="tm-brow">
+          <div class="tm-bmeta"><span>Задачі</span><span>${r.pct}%</span></div>
+          <div class="tm-btrack"><div class="tm-bfill" style="width:${r.pct}%;background:${r.m.color}"></div></div>
+        </div>
+        <div class="tm-brow">
+          <div class="tm-bmeta"><span>Години</span><span>${r.pctH}%</span></div>
+          <div class="tm-btrack"><div class="tm-bfill" style="width:${r.pctH}%;background:${r.m.color};opacity:.5"></div></div>
+        </div>
+      </div>
+    </div>`).join('');
+
+  // ── порівняльна таблиця (+ підсумковий рядок) ──
+  const tot = statsFor(scoped);
+  const rowHTML = (av, nm, color, s, bold) => {
+    const st = s.pct>=80?'done':s.pct>=50?'partial':'bad';
+    const stLabel = s.pct>=80?'В нормі':s.pct>=50?'Відставання':'Критично';
+    return `<tr style="${bold?'background:var(--surface2)':''}">
+      <td><div class="tt-who"><div class="tt-av" style="background:${color}">${av}</div><span style="${bold?'font-weight:800':''}">${nm}</span></div></td>
+      <td class="num">${s.total}</td>
+      <td class="num" style="color:var(--accent)">${s.done}</td>
+      <td><div class="mini-prog"><div class="mp-track"><div class="mp-fill" style="width:${s.pct}%"></div></div><span class="mp-pct ${s.pct>=80?'great':s.pct>=50?'ok':'bad'}">${s.pct}%</span></div></td>
+      <td class="num">${(s.totalMins/60).toFixed(1)}г</td>
+      <td class="num" style="color:var(--accent2)">${(s.doneMins/60).toFixed(1)}г</td>
+      <td class="num" style="color:${s.overdue>0?'var(--danger)':'var(--text3)'}">${s.overdue}</td>
+      <td><span class="sbadge ${st}">${s.total===0?'—':stLabel}</span></td>
+    </tr>`;
+  };
+  document.getElementById('tm-tbody').innerHTML =
+    rows.map(r => rowHTML(r.m.short, r.m.name, r.m.color, r, false)).join('') +
+    rowHTML('ВС', 'Разом', '#7D8FA8', tot, true);
+
+  // ── чарт ──
+  const maxPct = Math.max(100, ...rows.map(r=>r.pct));
+  document.getElementById('tm-chart').innerHTML = rows.map(r => `
+    <div class="c-bar-wrap">
+      <div class="c-bar" style="height:${Math.max(4, r.pct/maxPct*100)}%;background:${r.m.color}">
+        <div class="c-bar-val">${r.pct}%</div>
+      </div>
+      <div class="c-bar-label">${r.m.short}</div>
+    </div>`).join('');
+
+  // ── задачі, згруповані по людях ──
+  document.getElementById('tm-tasks').innerHTML = rows.map(r => {
+    const sorted = r.list.slice().sort((a,b)=>(a.dueMs||0)-(b.dueMs||0));
+    const body = sorted.length===0
+      ? `<div class="empty-state" style="padding:16px;font-size:11px;">Немає задач у цьому періоді</div>`
+      : sorted.map(t => {
+          const col = t.status==='closed' ? 'var(--accent)'
+                    : t.bucket==='overdue' ? 'var(--danger)'
+                    : t.bucket==='today'   ? 'var(--warn)' : 'var(--accent2)';
+          return `<div class="tm-trow ${t.status==='closed'?'done':''}">
+            <div class="tm-tdot" style="background:${col}"></div>
+            <div class="tm-tn">${t.name}</div>
+            <div class="tm-tmeta">${t.mins}хв · ${t.dueLabel}</div>
+            <a class="t-btn" href="${t.url}" target="_blank" title="ClickUp" style="opacity:1">↗</a>
+          </div>`;
+        }).join('');
+    return `<div>
+      <div class="tm-grp-head">
+        <div class="tt-av" style="background:${r.m.color}">${r.m.short}</div>
+        <div style="font-size:12px;font-weight:700">${r.m.name}</div>
+        <div class="tm-grp-cnt">${r.done} / ${r.total} · ${r.pct}%</div>
+      </div>
+      ${body}
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════
 // NAV / UTIL
 // ════════════════════════════════════════════
 async function switchView(v,el){
@@ -1316,6 +1712,7 @@ async function switchView(v,el){
   if(el)el.classList.add('active');
   if(v==='week')  buildWeek();
   if(v==='month') await buildMonth();
+  if(v==='team')  buildTeam();
 }
 function openModal(){ document.getElementById('modal').classList.add('open'); }
 function closeModal(){ document.getElementById('modal').classList.remove('open'); }
@@ -1336,6 +1733,12 @@ function hideBanner(view){ const b=document.getElementById('banner-'+view); if(b
 // ════════════════════════════════════════════
 // INIT
 // ════════════════════════════════════════════
+// селект виконавця в модалці — з реальних ClickUp id
+document.getElementById('mo-who').innerHTML =
+  TEAM.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+
+// підпис у футері сайдбара — завжди founder
+renderWhoList();
 loadToday();
 </script>
 </body>
