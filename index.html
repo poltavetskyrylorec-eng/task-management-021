@@ -1216,9 +1216,13 @@ function renderTasks() {
   const hzEnd = horizonEnd();
   const real = TASKS.filter(t => countsForTasks(t));
 
-  const ovList = real.filter(t => t.bucket === 'overdue');
-  const tdList = real.filter(t => t.bucket === 'today');
-  const upAll  = real.filter(t => t.bucket === 'upcoming');
+  // Три секції — це СПИСОК РОБОТИ, тому виконані задачі до них не входять:
+  // закрита задача з простроченим дедлайном не є прострочкою, вона зроблена.
+  // Уся історія, включно з виконаним, лишається в повному списку внизу.
+  const open   = real.filter(t => t.status !== 'closed');
+  const ovList = open.filter(t => t.bucket === 'overdue');
+  const tdList = open.filter(t => t.bucket === 'today');
+  const upAll  = open.filter(t => t.bucket === 'upcoming');
   // горизонт — по ВЛАСНОМУ дедлайну задачі, не по батьківському
   const upList    = upAll.filter(t => (t.dueMs || Infinity) <= hzEnd);
   const upHidden  = upAll.length - upList.length;
@@ -1277,7 +1281,11 @@ function renderTasks() {
                     && (t.bucket === 'overdue' || t.bucket === 'today')).length;
   const hint = document.getElementById('up-hint');
   if (hint) {
-    const show = openLeft === 0 && (nOv + nTd) > 0 && nUp > 0;
+    // Банер має спрацювати САМЕ КОЛИ все закрито, тому «чи були задачі»
+    // рахуємо по всіх, включно з виконаними. Якби брали nOv+nTd (лише відкриті),
+    // умова ніколи б не виконалась: у момент закриття останньої вони обидва = 0.
+    const hadWork = real.some(t => t.bucket === 'overdue' || t.bucket === 'today');
+    const show = openLeft === 0 && hadWork && nUp > 0;
     hint.classList.toggle('hidden', !show);
     if (show) {
       document.getElementById('up-hint-txt').textContent = UP_OPEN
@@ -1471,7 +1479,7 @@ function updateAnalytics() {
   const todayStart = new Date(); todayStart.setHours(0,0,0,0);
   const todayEnd   = new Date(); todayEnd.setHours(23,59,59,999);
 
-  let done=0,total=0,doneMins=0,totalMins=0,overdueOpen=0;
+  let done=0,total=0,doneMins=0,totalMins=0,overdueOpen=0,secTd=0,secUp=0;
   const pri = {urgent:0,high:0,normal:0,low:0};
   TASKS.forEach(t => {
     if (!countsForTasks(t)) return;         // пропускаємо контекстних чужих батьків
@@ -1483,6 +1491,12 @@ function updateAnalytics() {
     }
     if (t.bucket==='overdue' && t.status!=='closed') overdueOpen++;
     if (pri[t.priority]!==undefined && t.status!=='closed') pri[t.priority]++;
+    // лічильники секцій — рахуємо тут, щоб цифра падала одразу при відмітці,
+    // не чекаючи наступного повного перерендеру
+    if (t.status !== 'closed') {
+      if (t.bucket === 'today') secTd++;
+      else if (t.bucket === 'upcoming' && (t.dueMs || Infinity) <= horizonEnd()) secUp++;
+    }
   });
   const leftMins = totalMins - doneMins;
   const pctT = total>0?Math.round(done/total*100):0;
@@ -1531,6 +1545,14 @@ function updateAnalytics() {
   // бейдж прострочки в сайдбарі — тут, щоб оновлювався одразу при відмітці
   const badge = document.getElementById('badge-ov');
   if (badge) badge.textContent = overdueOpen;
+
+  // Лічильники трьох секцій = скільки ще НЕ зроблено.
+  // Відмічена картка лишається на екрані (щоб не зникала з-під курсора),
+  // але цифра одразу показує, скільки роботи залишилось.
+  const setCnt = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  setCnt('cnt-ov', overdueOpen);
+  setCnt('cnt-td', secTd);
+  setCnt('cnt-up', secUp);
 
   document.getElementById('pri-urgent').textContent=pri.urgent;
   document.getElementById('pri-high').textContent=pri.high;
