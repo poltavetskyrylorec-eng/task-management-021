@@ -407,6 +407,109 @@ body.personal .tm-cards { max-width:340px; }
 .tm-tdot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
 .tm-tn { font-size:12px; font-weight:600; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .tm-tmeta { font-size:9px; color:var(--text3); font-weight:600; flex-shrink:0; }
+
+/* ══════════════════════════════════════════
+   BOARD (Kanban)
+   ══════════════════════════════════════════ */
+.board-top { background:var(--surface); border-bottom:1px solid var(--border); padding:16px 28px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; position:sticky; top:0; z-index:20; }
+.board-title { font-size:18px; font-weight:800; }
+.board-sub { font-size:11px; color:var(--text3); font-weight:600; }
+.board-tools { margin-left:auto; display:flex; align-items:center; gap:8px; }
+.bd-toggle { display:flex; background:var(--surface2); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+.bd-tbtn { padding:6px 11px; font-size:10px; font-weight:700; background:transparent; border:none; color:var(--text3); cursor:pointer; font-family:var(--font); transition:all .15s; }
+.bd-tbtn.on { background:rgba(0,229,160,.12); color:var(--accent); }
+
+.board-scroll { flex:1; overflow-x:auto; overflow-y:hidden; padding:18px 28px 24px; }
+.board-cols { display:flex; gap:12px; height:100%; min-height:0; align-items:stretch; }
+.bcol { width:272px; flex:0 0 272px; background:var(--surface); border:1px solid var(--border); border-radius:var(--r); display:flex; flex-direction:column; min-height:0; transition:border-color .15s, background .15s; }
+.bcol.drop { border-color:var(--accent); background:rgba(0,229,160,.04); }
+.bcol-head { padding:12px 13px 10px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.bcol-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.bcol-name { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.bcol-cnt { margin-left:auto; font-size:9px; font-weight:700; color:var(--text3); background:var(--surface2); border:1px solid var(--border); padding:1px 7px; border-radius:8px; flex-shrink:0; }
+.bcol-est { font-size:9px; color:var(--text3); font-weight:600; padding:0 13px 8px; border-bottom:1px solid var(--border); flex-shrink:0; }
+.bcol-body { flex:1; overflow-y:auto; padding:10px; display:flex; flex-direction:column; gap:7px; min-height:60px; }
+.bcol-empty { font-size:10px; color:var(--text3); text-align:center; padding:18px 8px; font-weight:600; }
+
+.bcard { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:10px 11px; cursor:grab; transition:all .15s; position:relative; }
+.bcard:hover { border-color:rgba(255,255,255,.12); background:var(--surface3); }
+.bcard.dragging { opacity:.35; cursor:grabbing; }
+.bcard.tracking { border-color:rgba(0,229,160,.45); box-shadow:0 0 0 1px rgba(0,229,160,.15); }
+.bcard.done { opacity:.42; }
+.bcard.done .bcard-name { text-decoration:line-through; color:var(--text3); }
+.board-scroll::-webkit-scrollbar { height:8px; }
+.board-scroll::-webkit-scrollbar-thumb { background:var(--surface3); border-radius:8px; }
+.bcol-body::-webkit-scrollbar { width:6px; }
+.bcol-body::-webkit-scrollbar-thumb { background:var(--surface3); border-radius:6px; }
+.bcard-name { font-size:12px; font-weight:600; line-height:1.35; margin-bottom:7px; word-break:break-word; }
+.bcard-sub { font-size:9px; color:var(--text3); font-weight:600; margin:-4px 0 7px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.bcard-meta { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
+.bcard-av { width:19px; height:19px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:8px; font-weight:800; color:#07090E; flex-shrink:0; }
+.bcard-play { position:absolute; top:8px; right:8px; width:22px; height:22px; border-radius:5px; background:var(--surface3); border:1px solid var(--border); color:var(--text3); cursor:pointer; display:none; align-items:center; justify-content:center; font-size:9px; }
+.bcard:hover .bcard-play { display:flex; }
+.bcard-play:hover { border-color:var(--accent); color:var(--accent); }
+.bcard-play.on { display:flex; border-color:var(--accent); color:var(--accent); background:rgba(0,229,160,.12); }
+
+/* ══════════════════════════════════════════
+   TIMER
+   ══════════════════════════════════════════ */
+.t-play { width:26px; height:26px; border-radius:5px; background:var(--surface3); border:1px solid var(--border); cursor:pointer; display:flex; align-items:center; justify-content:center; color:var(--text3); transition:all .15s; font-size:10px; padding:0; font-family:var(--font); }
+.t-play:hover { border-color:var(--accent); color:var(--accent); }
+.t-play.on { border-color:var(--accent); color:var(--accent); background:rgba(0,229,160,.12); }
+.tcard.tracking { border-color:rgba(0,229,160,.4); }
+.tcard.tracking .t-acts { opacity:1; }
+
+.timerbar { position:fixed; left:222px; bottom:18px; z-index:300; display:flex; flex-direction:column; gap:7px; max-width:420px; }
+.tbar-item { background:var(--surface2); border:1px solid rgba(0,229,160,.35); border-radius:10px; padding:9px 12px; display:flex; align-items:center; gap:11px; box-shadow:0 10px 34px rgba(0,0,0,.55); }
+.tbar-pulse { width:7px; height:7px; border-radius:50%; background:var(--accent); flex-shrink:0; animation:tbp 1.4s infinite; }
+@keyframes tbp { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.75)} }
+.tbar-body { min-width:0; flex:1; }
+.tbar-name { font-size:11px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:230px; }
+.tbar-who { font-size:9px; color:var(--text3); font-weight:600; margin-top:2px; }
+.tbar-clock { font-size:15px; font-weight:800; color:var(--accent); letter-spacing:.5px; flex-shrink:0; }
+.tbar-stop { width:28px; height:28px; border-radius:6px; background:rgba(239,68,68,.12); border:1px solid rgba(239,68,68,.3); color:var(--danger); cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:11px; font-family:var(--font); }
+.tbar-stop:hover { background:rgba(239,68,68,.22); }
+body.personal .timerbar, .timerbar { left:222px; }
+
+/* ══════════════════════════════════════════
+   TASK DRAWER
+   ══════════════════════════════════════════ */
+.dr-back { position:fixed; inset:0; background:rgba(7,9,14,.7); backdrop-filter:blur(3px); z-index:400; opacity:0; pointer-events:none; transition:opacity .2s; }
+.dr-back.open { opacity:1; pointer-events:all; }
+.drawer { position:fixed; top:0; right:0; bottom:0; width:520px; max-width:100vw; background:var(--surface); border-left:1px solid var(--border); z-index:401; display:flex; flex-direction:column; transform:translateX(100%); transition:transform .24s cubic-bezier(.4,0,.2,1); }
+.drawer.open { transform:translateX(0); }
+.dr-head { padding:20px 22px 16px; border-bottom:1px solid var(--border); flex-shrink:0; }
+.dr-top { display:flex; align-items:flex-start; gap:10px; margin-bottom:12px; }
+.dr-name { font-size:17px; font-weight:800; line-height:1.35; flex:1; word-break:break-word; }
+.dr-x { width:28px; height:28px; border-radius:6px; background:var(--surface2); border:1px solid var(--border); color:var(--text2); cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:14px; font-family:var(--font); }
+.dr-x:hover { color:var(--text); border-color:var(--text2); }
+.dr-tags { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.dr-body { flex:1; overflow-y:auto; padding:18px 22px 26px; }
+.dr-sec { margin-bottom:22px; }
+.dr-sec-t { font-size:9px; text-transform:uppercase; letter-spacing:1.5px; color:var(--text3); font-weight:700; margin-bottom:10px; }
+.dr-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.dr-kv { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; }
+.dr-k { font-size:9px; color:var(--text3); font-weight:700; margin-bottom:4px; }
+.dr-v { font-size:13px; font-weight:700; }
+.dr-desc { font-size:12.5px; line-height:1.65; color:var(--text2); white-space:pre-wrap; word-break:break-word; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:13px 14px; max-height:340px; overflow-y:auto; }
+.dr-desc.empty { color:var(--text3); font-style:italic; }
+.dr-att { display:flex; align-items:center; gap:10px; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:9px 12px; margin-bottom:6px; text-decoration:none; color:var(--text); transition:all .15s; }
+.dr-att:hover { border-color:var(--accent2); }
+.dr-att-ico { width:26px; height:26px; border-radius:6px; background:var(--surface3); display:flex; align-items:center; justify-content:center; font-size:8px; font-weight:800; color:var(--text2); flex-shrink:0; text-transform:uppercase; }
+.dr-att-n { font-size:11.5px; font-weight:600; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.dr-att-s { font-size:9px; color:var(--text3); font-weight:600; flex-shrink:0; }
+.dr-foot { padding:14px 22px; border-top:1px solid var(--border); display:flex; gap:8px; flex-shrink:0; background:var(--surface); }
+.dr-btn { flex:1; padding:10px 12px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; font-family:var(--font); border:1px solid var(--border); background:var(--surface2); color:var(--text2); display:flex; align-items:center; justify-content:center; gap:6px; text-decoration:none; transition:all .15s; }
+.dr-btn:hover { color:var(--text); border-color:var(--text2); }
+.dr-btn.go { background:rgba(0,229,160,.12); color:var(--accent); border-color:rgba(0,229,160,.3); }
+.dr-btn.go:hover { background:rgba(0,229,160,.2); }
+.dr-btn.stop { background:rgba(239,68,68,.12); color:var(--danger); border-color:rgba(239,68,68,.3); }
+.dr-sel { width:100%; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:10px 12px; color:var(--text); font-family:var(--font); font-size:12px; font-weight:600; outline:none; cursor:pointer; }
+.dr-sel:focus { border-color:var(--accent); }
+.dr-load { font-size:11px; color:var(--text3); font-weight:600; }
+.att-badge { display:inline-flex; align-items:center; gap:3px; font-size:9px; font-weight:700; color:var(--accent2); border:1px solid rgba(14,165,233,.3); background:rgba(14,165,233,.09); padding:1px 6px; border-radius:5px; }
+.t-name.clickable { cursor:pointer; }
+.t-name.clickable:hover { color:var(--accent); }
 </style>
 </head>
 <body>
@@ -430,6 +533,10 @@ body.personal .tm-cards { max-width:340px; }
     <a class="nav-item" onclick="switchView('month',this)">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5 2v12M11 2v12M2 8h12"/></svg>
       Місяць
+    </a>
+    <a class="nav-item" onclick="switchView('board',this)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="2.5" width="3.6" height="11" rx="1"/><rect x="6.2" y="2.5" width="3.6" height="8" rx="1"/><rect x="10.9" y="2.5" width="3.6" height="5" rx="1"/></svg>
+      Борд
     </a>
     <div class="nav-label" style="margin-top:10px;">Команда</div>
     <a class="nav-item" onclick="switchView('team',this)">
@@ -701,6 +808,31 @@ body.personal .tm-cards { max-width:340px; }
 </div>
 
 <!-- ══ TEAM ══ -->
+<!-- ══ BOARD ══ -->
+<div class="view" id="view-board">
+  <div class="banner load hidden" id="banner-board"><span class="dot-pulse"></span><span>Завантаження…</span></div>
+  <div class="board-top">
+    <div>
+      <div class="board-title">Борд задач</div>
+      <div class="board-sub" id="bd-sub">—</div>
+    </div>
+    <div class="board-tools">
+      <div class="bd-toggle">
+        <button class="bd-tbtn on" onclick="setBoardScope('open',this)">Активні</button>
+        <button class="bd-tbtn" onclick="setBoardScope('all',this)">Усі</button>
+      </div>
+      <div class="bd-toggle">
+        <button class="bd-tbtn on" onclick="setBoardGroup('status',this)">По статусах</button>
+        <button class="bd-tbtn" onclick="setBoardGroup('who',this)">По людях</button>
+      </div>
+      <button class="btn-ghost" onclick="loadToday()">Оновити</button>
+    </div>
+  </div>
+  <div class="board-scroll">
+    <div class="board-cols" id="board-cols"></div>
+  </div>
+</div>
+
 <div class="view" id="view-team">
   <div class="banner load hidden" id="banner-team"><span class="dot-pulse"></span><span></span></div>
 
@@ -784,6 +916,42 @@ body.personal .tm-cards { max-width:340px; }
     </div>
   </div>
 </div>
+
+<!-- ══ RUNNING TIMERS ══ -->
+<div class="timerbar" id="timerbar"></div>
+
+<!-- ══ TASK DRAWER ══ -->
+<div class="dr-back" id="dr-back" onclick="closeTask()"></div>
+<aside class="drawer" id="drawer">
+  <div class="dr-head">
+    <div class="dr-top">
+      <div class="dr-name" id="dr-name">—</div>
+      <button class="dr-x" onclick="closeTask()">✕</button>
+    </div>
+    <div class="dr-tags" id="dr-tags"></div>
+  </div>
+  <div class="dr-body">
+    <div class="dr-sec">
+      <div class="dr-grid" id="dr-grid"></div>
+    </div>
+    <div class="dr-sec">
+      <div class="dr-sec-t">Статус</div>
+      <select class="dr-sel" id="dr-status" onchange="changeStatusFromDrawer(this.value)"></select>
+    </div>
+    <div class="dr-sec">
+      <div class="dr-sec-t">Опис</div>
+      <div class="dr-desc empty" id="dr-desc">Завантаження…</div>
+    </div>
+    <div class="dr-sec" id="dr-att-sec">
+      <div class="dr-sec-t">Вкладення <span id="dr-att-cnt"></span></div>
+      <div id="dr-att-list"><div class="dr-load">Завантаження…</div></div>
+    </div>
+  </div>
+  <div class="dr-foot">
+    <button class="dr-btn go" id="dr-timer-btn" onclick="toggleTimerFromDrawer()">▶ Почати трекінг</button>
+    <a class="dr-btn" id="dr-cu" href="#" target="_blank">Відкрити в ClickUp ↗</a>
+  </div>
+</aside>
 
 <div class="toasts" id="toasts"></div>
 
@@ -984,7 +1152,15 @@ function normalizeTask(t) {
     hasKidsInSet: !!t.hasKidsInSet,   // має підзадачі в наборі → час не рахуємо
     url: t.url || ('https://app.clickup.com/t/' + t.id),
     assigneeId: t.assigneeId ? String(t.assigneeId) : null,
-    assignee: t.assigneeId ? member(t.assigneeId).short : '—'
+    assignee: t.assigneeId ? member(t.assigneeId).short : '—',
+    // ── нове: потрібно борду, таймеру і картці задачі ──
+    statusName:  t.statusName || (isClosed ? 'complete' : 'to do'),
+    statusColor: t.statusColor || null,
+    statusType:  t.statusType || (isClosed ? 'closed' : 'open'),
+    // трекнутий час — ЧИСТА тривалість у мс, num() тут не годиться (він множить на 1000)
+    trackedMs:   (t.trackedMs != null && !isNaN(Number(t.trackedMs)) && Number(t.trackedMs) > 0) ? Number(t.trackedMs) : 0,
+    estimateMs:  (t.estimateMs != null && !isNaN(Number(t.estimateMs))) ? Number(t.estimateMs) : null,
+    attachCount: (t.attachCount != null && !isNaN(parseInt(t.attachCount,10))) ? parseInt(t.attachCount,10) : 0
   };
 }
 
@@ -1352,16 +1528,20 @@ function taskCardHTML(t, depth, sec) {
         <svg class="chk-ico" width="9" height="9" viewBox="0 0 12 12" fill="none"><path d="M2 6l3 3 5-5" stroke="#07090E" stroke-width="2.2" stroke-linecap="round"/></svg>
       </div>
       <div class="t-body">
-        <div class="t-name" style="${depth>0?'font-size:12px;':''}">${prefix}${t.name}</div>
+        <div class="t-name clickable" style="${depth>0?'font-size:12px;':''}" onclick="openTask('${t.id}')" title="Відкрити картку задачі">${prefix}${t.name}</div>
         <div class="t-meta">
           ${whoTag}
           <span class="tag ${dueClass}">${t.dueLabel}</span>
           ${priTag}
           ${timeTag}
-          <span class="tag clickup">ClickUp</span>
+          <span class="tag clickup">${t.statusName}</span>
+          ${t.attachCount ? `<span class="att-badge">📎 ${t.attachCount}</span>` : ''}
         </div>
       </div>
-      <div class="t-acts"><a class="t-btn" href="${t.url}" target="_blank" title="ClickUp">↗</a></div>
+      <div class="t-acts">
+        <button class="t-play" onclick="toggleTimer('${t.id}',event)" title="Почати трекінг">▶</button>
+        <a class="t-btn" href="${t.url}" target="_blank" title="Відкрити в ClickUp" onclick="event.stopPropagation()">↗</a>
+      </div>
     </div>
     ${kids.map(c => taskCardHTML(c, depth+1, sec)).join('')}`;
 }
@@ -1373,6 +1553,7 @@ function renderBucket(elId, sec, type) {
     return;
   }
   el.innerHTML = sec.roots.map(t => taskCardHTML(t, 0, sec)).join('');
+  if (typeof paintTimers === 'function') paintTimers();
 }
 
 // ════════════════════════════════════════════
@@ -2224,6 +2405,476 @@ function renderTeamTasks(rows, from, to){
 
 
 // ════════════════════════════════════════════
+// ⏱ TIMER + 🗂 BOARD + 📄 DRAWER
+// ════════════════════════════════════════════
+//
+// ТАЙМЕР. ClickUp вміє тримати лише ОДИН запущений таймер на токен
+// («Start a timer for the authenticated user»). Оскільки у нас один
+// спільний токен на бекенді, живий таймер ClickUp тут не годиться —
+// Катя і Кирило перебивали б одне одного.
+// Тому лічильник живе у нас (Apps Script Script Properties), а в ClickUp
+// на «Стоп» летить готовий запис часу через POST /team/{id}/time_entries.
+// Ключ таймера = ВИКОНАВЕЦЬ задачі: «задача Каті → таймер Каті».
+// Один таймер на людину, кілька людей паралельно — ок.
+
+let TIMERS = {};          // { userId: { taskId, taskName, startMs } }
+let TICKER = null;
+
+function timerKey(t){ return (t && t.assigneeId) || PERSONAL || TEAM[0].id; }
+function runningFor(taskId){
+  for (const uid in TIMERS) if (TIMERS[uid] && TIMERS[uid].taskId === String(taskId)) return uid;
+  return null;
+}
+function hms(ms){
+  const s = Math.max(0, Math.floor(ms/1000));
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), ss = s%60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+}
+function durLabel(ms){
+  if (!ms || ms < 0) return '—';
+  const mins = Math.round(ms/60000);
+  if (mins < 60) return mins + ' хв';
+  return Math.floor(mins/60) + ' год ' + (mins%60 ? (mins%60) + ' хв' : '');
+}
+
+async function refreshTimers(){
+  if (USE_MOCK) return;
+  try {
+    const d = await api(GS_URL + '?action=getTimers');
+    TIMERS = (d && d.timers) || {};
+  } catch(e){ /* тихо: таймер не критичний для решти дашборда */ }
+  paintTimers();
+}
+
+async function startTimer(taskId){
+  const t = BY_ID[String(taskId)] || ALL_TASKS.find(x => x.id === String(taskId));
+  if (!t) return;
+  if (t.contextOnly) { toast('🔒','Задача чужа — трекінг у її виконавця'); return; }
+  const uid = timerKey(t);
+
+  // якщо в цієї людини вже щось цокає — спершу зупиняємо (час не губиться)
+  if (TIMERS[uid]) {
+    if (TIMERS[uid].taskId === String(taskId)) { stopTimer(uid); return; }
+    await stopTimer(uid, true);
+  }
+
+  TIMERS[uid] = { taskId:String(taskId), taskName:t.name, startMs: Date.now() };
+  paintTimers();
+
+  if (USE_MOCK) { toast('▶','Трекінг пішов (mock)'); return; }
+  try {
+    await api(GS_URL, {
+      method:'POST',
+      headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action:'startTimer', userId:uid, taskId:String(taskId), taskName:t.name, startMs:TIMERS[uid].startMs })
+    });
+    toast('▶', member(uid).short + ' — трекінг пішов');
+  } catch(e){
+    delete TIMERS[uid]; paintTimers();
+    toast('⚠️','Таймер не стартував: ' + e.message);
+  }
+}
+
+async function stopTimer(uid, silent){
+  const cur = TIMERS[uid];
+  if (!cur) return;
+  const elapsed = Date.now() - cur.startMs;
+  delete TIMERS[uid];
+  paintTimers();
+
+  if (USE_MOCK) { if(!silent) toast('⏹','Записано ' + durLabel(elapsed)); return; }
+  try {
+    const d = await api(GS_URL, {
+      method:'POST',
+      headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action:'stopTimer', userId:uid })
+    });
+    const wrote = (d && d.durationMs) ? d.durationMs : elapsed;
+    // локально доливаємо трекнутий час, щоб цифри не чекали наступного рефрешу
+    const t = BY_ID[cur.taskId] || ALL_TASKS.find(x => x.id === cur.taskId);
+    if (t) t.trackedMs = (t.trackedMs || 0) + wrote;
+    if (!silent) toast('⏹', durLabel(wrote) + ' → ClickUp');
+    if (document.getElementById('view-board').classList.contains('active')) buildBoard();
+    if (DR_TASK === cur.taskId) paintDrawerTimerBtn();
+  } catch(e){
+    if (!silent) toast('⚠️','Час не записався: ' + e.message);
+  }
+}
+
+function toggleTimer(taskId, ev){
+  if (ev) { ev.stopPropagation(); ev.preventDefault(); }
+  const uid = runningFor(taskId);
+  if (uid) stopTimer(uid); else startTimer(taskId);
+}
+
+function paintTimers(){
+  const bar = document.getElementById('timerbar');
+  const keys = Object.keys(TIMERS).filter(k => TIMERS[k]);
+  bar.innerHTML = keys.map(uid => {
+    const c = TIMERS[uid], m = member(uid);
+    return `<div class="tbar-item">
+      <span class="tbar-pulse"></span>
+      <div class="tbar-body">
+        <div class="tbar-name" title="${esc(c.taskName)}">${esc(c.taskName)}</div>
+        <div class="tbar-who">${m.short} · ${m.name}</div>
+      </div>
+      <div class="tbar-clock mono" data-tstart="${c.startMs}">00:00:00</div>
+      <button class="tbar-stop" onclick="stopTimer('${uid}')" title="Зупинити і записати в ClickUp">⏹</button>
+    </div>`;
+  }).join('');
+
+  // підсвітка карток, що зараз трекаються
+  document.querySelectorAll('.tcard[data-task]').forEach(c => {
+    const on = !!runningFor(c.dataset.task);
+    c.classList.toggle('tracking', on);
+    const b = c.querySelector('.t-play');
+    if (b) { b.classList.toggle('on', on); b.textContent = on ? '⏹' : '▶'; b.title = on ? 'Зупинити трекінг' : 'Почати трекінг'; }
+  });
+  document.querySelectorAll('.bcard[data-task]').forEach(c => {
+    const on = !!runningFor(c.dataset.task);
+    c.classList.toggle('tracking', on);
+    const b = c.querySelector('.bcard-play');
+    if (b) { b.classList.toggle('on', on); b.textContent = on ? '⏹' : '▶'; }
+  });
+  if (DR_TASK) paintDrawerTimerBtn();
+
+  tick();
+  if (!TICKER) TICKER = setInterval(tick, 1000);
+  if (!keys.length && TICKER) { clearInterval(TICKER); TICKER = null; }
+}
+
+function tick(){
+  document.querySelectorAll('[data-tstart]').forEach(el => {
+    el.textContent = hms(Date.now() - parseInt(el.dataset.tstart, 10));
+  });
+}
+
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// ════════════════════════════════════════════
+// STATUSES
+// ════════════════════════════════════════════
+let STATUSES = [];   // [{ status, color, type, orderindex }]
+
+async function loadStatuses(){
+  if (!USE_MOCK) {
+    try {
+      const d = await api(GS_URL + '?action=getStatuses');
+      if (d && d.statuses && d.statuses.length) {
+        STATUSES = d.statuses.slice().sort((a,b) => (a.orderindex||0) - (b.orderindex||0));
+        return;
+      }
+    } catch(e){ /* впадемо у fallback нижче */ }
+  }
+  // fallback: збираємо статуси з самих задач
+  const seen = new Map();
+  ALL_TASKS.forEach(t => {
+    const n = t.statusName || (t.status === 'closed' ? 'complete' : 'to do');
+    if (!seen.has(n)) seen.set(n, { status:n, color:t.statusColor || '#7D8FA8', type:t.statusType || 'custom', orderindex:seen.size });
+  });
+  STATUSES = [...seen.values()];
+}
+
+function statusOf(t){ return t.statusName || (t.status === 'closed' ? 'complete' : 'to do'); }
+
+// ⚠️ Дзеркало CLOSED_TYPES/CLOSED_NAMES з Apps Script. У нас статус «Відміна»
+// має тип custom, але бекенд рахує його закритим. Якщо покладатися лише на
+// type — задача, кинута в «Відміну», лишалась би відкритою в аналітиці
+// до наступного перезавантаження. Тримати ці два списки синхронними.
+const CLOSED_TYPES_FE = ['closed','done'];
+const CLOSED_NAMES_FE = ['завершено','відміна','closed','complete','done'];
+function isClosedStatus(name, type){
+  return CLOSED_TYPES_FE.indexOf(String(type||'').toLowerCase()) !== -1
+      || CLOSED_NAMES_FE.indexOf(String(name||'').toLowerCase()) !== -1;
+}
+function statusMeta(name){
+  return STATUSES.find(s => (s.status||'').toLowerCase() === String(name||'').toLowerCase())
+      || { status:name, color:'#7D8FA8', type:'custom' };
+}
+
+// ════════════════════════════════════════════
+// BOARD
+// ════════════════════════════════════════════
+let BOARD_SCOPE = localStorage.getItem('dabudai_bscope') || 'open';   // open | all
+let BOARD_GROUP = localStorage.getItem('dabudai_bgroup') || 'status'; // status | who
+
+function setBoardScope(v, el){
+  BOARD_SCOPE = v; localStorage.setItem('dabudai_bscope', v);
+  el.parentElement.querySelectorAll('.bd-tbtn').forEach(b => b.classList.remove('on'));
+  el.classList.add('on');
+  buildBoard();
+}
+function setBoardGroup(v, el){
+  BOARD_GROUP = v; localStorage.setItem('dabudai_bgroup', v);
+  el.parentElement.querySelectorAll('.bd-tbtn').forEach(b => b.classList.remove('on'));
+  el.classList.add('on');
+  buildBoard();
+}
+
+function boardTasks(){
+  return TASKS.filter(t => countsForTasks(t))
+              .filter(t => BOARD_SCOPE === 'all' ? true : t.status !== 'closed');
+}
+
+async function buildBoard(){
+  if (!STATUSES.length) await loadStatuses();
+  const wrap = document.getElementById('board-cols');
+  const list = boardTasks();
+
+  const cols = BOARD_GROUP === 'who'
+    ? TEAM.map(m => ({ key:m.id, name:m.name, color:m.color }))
+          .concat([{ key:'none', name:'Без виконавця', color:'#3D4F68' }])
+    : STATUSES.map(s => ({ key:s.status, name:s.status, color:s.color || '#7D8FA8' }));
+
+  const bucketOf = t => BOARD_GROUP === 'who' ? (t.assigneeId || 'none') : statusOf(t);
+
+  const grouped = {};
+  cols.forEach(c => grouped[c.key] = []);
+  list.forEach(t => {
+    const k = bucketOf(t);
+    const hit = cols.find(c => String(c.key).toLowerCase() === String(k).toLowerCase());
+    if (hit) grouped[hit.key].push(t); 
+    else { // невідома колонка — не ховаємо задачу, а створюємо колонку на льоту
+      cols.push({ key:k, name:k, color:'#7D8FA8' });
+      grouped[k] = [t];
+    }
+  });
+
+  const done = list.filter(t => t.status === 'closed').length;
+  document.getElementById('bd-sub').textContent =
+    `${list.length} задач · ${done} закрито · ${WHO === 'all' ? 'вся команда' : member(WHO).name}`;
+
+  wrap.innerHTML = cols.map(c => {
+    const items = (grouped[c.key] || []).sort(byDue);
+    const est = items.filter(countsForTime).reduce((s,t) => s + (t.mins || 0), 0);
+    return `<div class="bcol" data-col="${esc(c.key)}"
+                 ondragover="bcolOver(event,this)" ondragleave="this.classList.remove('drop')"
+                 ondrop="bcolDrop(event,this)">
+      <div class="bcol-head">
+        <span class="bcol-dot" style="background:${c.color}"></span>
+        <span class="bcol-name" title="${esc(c.name)}">${esc(c.name)}</span>
+        <span class="bcol-cnt">${items.length}</span>
+      </div>
+      <div class="bcol-est">${est ? '≈ ' + (est >= 60 ? (est/60).toFixed(1) + ' год' : est + ' хв') + ' оцінки' : '—'}</div>
+      <div class="bcol-body">
+        ${items.length ? items.map(bcardHTML).join('') : '<div class="bcol-empty">Порожньо</div>'}
+      </div>
+    </div>`;
+  }).join('');
+
+  paintTimers();
+}
+
+function bcardHTML(t){
+  const m = t.assigneeId ? member(t.assigneeId) : null;
+  const dueCls = t.bucket === 'overdue' ? 'overdue' : t.bucket === 'today' ? 'today' : 'upcoming';
+  const pri = (t.priority === 'high' || t.priority === 'urgent') ? `<span class="tag hi">${PRI_TAG[t.priority]}</span>` : '';
+  const st = BOARD_GROUP === 'who'
+    ? `<span class="tag clickup">${esc(statusOf(t))}</span>`
+    : (m ? `<span class="bcard-av" style="background:${m.color}" title="${esc(m.name)}">${m.short}</span>` : '');
+  const att = t.attachCount ? `<span class="att-badge">📎 ${t.attachCount}</span>` : '';
+  const parent = t.parentId && BY_ID[t.parentId] ? `<div class="bcard-sub" title="${esc(BY_ID[t.parentId].name)}">↳ ${esc(BY_ID[t.parentId].name)}</div>` : '';
+  return `<div class="bcard ${t.status === 'closed' ? 'done' : ''}" data-task="${t.id}" draggable="true"
+               ondragstart="bcardDrag(event,this)" ondragend="this.classList.remove('dragging')"
+               onclick="openTask('${t.id}')">
+    <button class="bcard-play" onclick="toggleTimer('${t.id}',event)" title="Трекінг">▶</button>
+    <div class="bcard-name">${esc(t.name)}</div>
+    ${parent}
+    <div class="bcard-meta">
+      ${st}
+      <span class="tag ${dueCls}">${t.dueLabel}</span>
+      ${pri}
+      ${t.hasKidsInSet ? '' : `<span class="tag time">⏱ ${t.mins}хв</span>`}
+      ${att}
+    </div>
+  </div>`;
+}
+
+let DRAG_ID = null;
+function bcardDrag(ev, el){
+  DRAG_ID = el.dataset.task;
+  el.classList.add('dragging');
+  ev.dataTransfer.effectAllowed = 'move';
+  try { ev.dataTransfer.setData('text/plain', DRAG_ID); } catch(e){}
+}
+function bcolOver(ev, el){ ev.preventDefault(); el.classList.add('drop'); }
+
+async function bcolDrop(ev, el){
+  ev.preventDefault();
+  el.classList.remove('drop');
+  const id = DRAG_ID || ev.dataTransfer.getData('text/plain');
+  DRAG_ID = null;
+  if (!id) return;
+  const target = el.dataset.col;
+  const t = BY_ID[id] || ALL_TASKS.find(x => x.id === id);
+  if (!t) return;
+
+  if (BOARD_GROUP === 'who') { toast('ℹ️','Перепризначення виконавця поки не вмикав — тільки статуси'); return; }
+  if (statusOf(t).toLowerCase() === String(target).toLowerCase()) return;
+
+  const prev = { statusName: t.statusName, status: t.status, statusType: t.statusType };
+  const meta = statusMeta(target);
+  t.statusName = target;
+  t.statusType = meta.type;
+  t.status = isClosedStatus(target, meta.type) ? 'closed' : 'open';
+  buildBoard(); renderWhoList(); updateAnalytics();
+
+  if (USE_MOCK) { toast('↔', `→ ${target} (mock)`); return; }
+  try {
+    await api(GS_URL, {
+      method:'POST',
+      headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action:'setStatus', taskId:id, status:target, taskName:t.name, assigneeId:t.assigneeId })
+    });
+    toast('↔', `«${t.name.substring(0,24)}…» → ${target}`);
+  } catch(e){
+    Object.assign(t, prev);
+    buildBoard(); renderWhoList(); updateAnalytics();
+    toast('⚠️','Статус не змінено: ' + e.message);
+  }
+}
+
+// ════════════════════════════════════════════
+// TASK DRAWER
+// ════════════════════════════════════════════
+let DR_TASK = null;
+const DETAIL_CACHE = {};   // taskId -> { descr, attachments, trackedMs }
+
+function openTask(id){
+  const t = BY_ID[String(id)] || ALL_TASKS.find(x => x.id === String(id));
+  if (!t) return;
+  DR_TASK = String(id);
+
+  document.getElementById('dr-name').textContent = t.name;
+  document.getElementById('dr-cu').href = t.url;
+
+  const m = t.assigneeId ? member(t.assigneeId) : null;
+  const st = statusMeta(statusOf(t));
+  document.getElementById('dr-tags').innerHTML = `
+    <span class="tag" style="color:${st.color};border-color:${st.color}55;background:${st.color}14">${esc(st.status)}</span>
+    ${m ? `<span class="tag" style="color:${m.color};border-color:${m.color}44;background:${m.color}14">${m.short} · ${esc(m.name)}</span>` : ''}
+    <span class="tag ${t.bucket === 'overdue' ? 'overdue' : t.bucket === 'today' ? 'today' : 'upcoming'}">${t.dueLabel}</span>
+    ${(t.priority === 'high' || t.priority === 'urgent') ? `<span class="tag hi">${PRI_TAG[t.priority]}</span>` : ''}`;
+
+  const parent = t.parentId && BY_ID[t.parentId] ? BY_ID[t.parentId].name : '—';
+  const kids = (CHILDREN[t.id] || []).length;
+  document.getElementById('dr-grid').innerHTML = `
+    <div class="dr-kv"><div class="dr-k">ОЦІНКА</div><div class="dr-v">${t.mins} хв</div></div>
+    <div class="dr-kv"><div class="dr-k">ВІДТРЕКАНО</div><div class="dr-v" id="dr-tracked">${durLabel(t.trackedMs)}</div></div>
+    <div class="dr-kv"><div class="dr-k">ДЕДЛАЙН</div><div class="dr-v">${t.dueMs ? fmt(new Date(t.dueMs)) : '—'}</div></div>
+    <div class="dr-kv"><div class="dr-k">ПІДЗАДАЧ</div><div class="dr-v">${kids}</div></div>
+    <div class="dr-kv" style="grid-column:1/-1"><div class="dr-k">БАТЬКІВСЬКА</div><div class="dr-v" style="font-size:12px;font-weight:600">${esc(parent)}</div></div>`;
+
+  const sel = document.getElementById('dr-status');
+  sel.innerHTML = (STATUSES.length ? STATUSES : [{ status: statusOf(t) }])
+    .map(s => `<option value="${esc(s.status)}" ${String(s.status).toLowerCase() === statusOf(t).toLowerCase() ? 'selected' : ''}>${esc(s.status)}</option>`).join('');
+  sel.disabled = !!t.contextOnly;
+
+  paintDrawerTimerBtn();
+
+  // опис і вкладення — тягнемо окремо, бо в списковому виклику ClickUp їх нема
+  const cached = DETAIL_CACHE[DR_TASK];
+  if (cached) paintDetail(cached);
+  else {
+    document.getElementById('dr-desc').textContent = 'Завантаження…';
+    document.getElementById('dr-desc').classList.add('empty');
+    document.getElementById('dr-att-list').innerHTML = '<div class="dr-load">Завантаження…</div>';
+    document.getElementById('dr-att-cnt').textContent = '';
+    loadDetail(DR_TASK);
+  }
+
+  document.getElementById('drawer').classList.add('open');
+  document.getElementById('dr-back').classList.add('open');
+}
+
+function closeTask(){
+  DR_TASK = null;
+  document.getElementById('drawer').classList.remove('open');
+  document.getElementById('dr-back').classList.remove('open');
+}
+
+async function loadDetail(id){
+  if (USE_MOCK) { paintDetail({ descr:'', attachments:[] }); return; }
+  try {
+    const d = await api(GS_URL + '?action=getTaskDetail&taskId=' + encodeURIComponent(id));
+    const det = { descr: d.descr || '', attachments: d.attachments || [], trackedMs: d.trackedMs };
+    DETAIL_CACHE[id] = det;
+    // фіксуємо кількість вкладень на задачі — щоб бейдж 📎 був і на картках борда
+    const t = BY_ID[id] || ALL_TASKS.find(x => x.id === id);
+    if (t) {
+      t.attachCount = det.attachments.length;
+      if (det.trackedMs != null) t.trackedMs = det.trackedMs;
+    }
+    if (DR_TASK === id) paintDetail(det);
+  } catch(e){
+    if (DR_TASK === id) {
+      document.getElementById('dr-desc').textContent = 'Не вдалось завантажити опис: ' + e.message;
+      document.getElementById('dr-att-list').innerHTML = '<div class="dr-load">Вкладення недоступні — відкрий у ClickUp</div>';
+    }
+  }
+}
+
+function paintDetail(det){
+  const d = document.getElementById('dr-desc');
+  if (det.descr && det.descr.trim()) { d.textContent = det.descr.trim(); d.classList.remove('empty'); }
+  else { d.textContent = 'Опису немає'; d.classList.add('empty'); }
+
+  const cnt = document.getElementById('dr-att-cnt');
+  const list = document.getElementById('dr-att-list');
+  const a = det.attachments || [];
+  cnt.innerHTML = a.length ? `<span class="att-badge">📎 ${a.length}</span>` : '';
+  if (det.trackedMs != null) {
+    const el = document.getElementById('dr-tracked');
+    if (el) el.textContent = durLabel(det.trackedMs);
+  }
+  list.innerHTML = a.length
+    ? a.map(f => `<a class="dr-att" href="${esc(f.url)}" target="_blank" rel="noopener">
+        <span class="dr-att-ico">${esc((f.extension || '?').substring(0,4))}</span>
+        <span class="dr-att-n">${esc(f.title || 'файл')}</span>
+        <span class="dr-att-s">${f.size ? Math.round(f.size/1024) + ' KB' : ''} ↗</span>
+      </a>`).join('')
+    : '<div class="dr-load">Вкладень немає</div>';
+}
+
+function paintDrawerTimerBtn(){
+  const b = document.getElementById('dr-timer-btn');
+  if (!b || !DR_TASK) return;
+  const on = !!runningFor(DR_TASK);
+  b.className = 'dr-btn ' + (on ? 'stop' : 'go');
+  b.textContent = on ? '⏹ Зупинити трекінг' : '▶ Почати трекінг';
+}
+
+function toggleTimerFromDrawer(){ if (DR_TASK) toggleTimer(DR_TASK); }
+
+async function changeStatusFromDrawer(val){
+  const id = DR_TASK;
+  const t = BY_ID[id] || ALL_TASKS.find(x => x.id === id);
+  if (!t || statusOf(t).toLowerCase() === String(val).toLowerCase()) return;
+
+  const prev = { statusName:t.statusName, status:t.status, statusType:t.statusType };
+  const meta = statusMeta(val);
+  t.statusName = val; t.statusType = meta.type;
+  t.status = isClosedStatus(val, meta.type) ? 'closed' : 'open';
+  renderTasks(); renderWhoList();
+  if (document.getElementById('view-board').classList.contains('active')) buildBoard();
+
+  if (USE_MOCK) { toast('↔', `→ ${val} (mock)`); return; }
+  try {
+    await api(GS_URL, {
+      method:'POST',
+      headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action:'setStatus', taskId:id, status:val, taskName:t.name, assigneeId:t.assigneeId })
+    });
+    toast('↔', 'Статус → ' + val);
+  } catch(e){
+    Object.assign(t, prev);
+    renderTasks(); toast('⚠️','Статус не змінено: ' + e.message);
+  }
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && DR_TASK) closeTask(); });
+
+// ════════════════════════════════════════════
 // NAV / UTIL
 // ════════════════════════════════════════════
 async function switchView(v,el){
@@ -2231,6 +2882,7 @@ async function switchView(v,el){
   document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
   if(el)el.classList.add('active');
+  if(v==='board') await buildBoard();
   if(v==='week')  buildWeek();
   if(v==='month') await buildMonth();
   if(v==='team')  buildTeam();
@@ -2288,7 +2940,14 @@ document.querySelectorAll('#hz-seg .hz-btn').forEach(b => {
 });
 paintUp();
 paintAll();
-loadToday();
+loadToday().then(() => {
+  // статуси для колонок борда і селекта в картці задачі
+  loadStatuses();
+  // якщо хтось лишив таймер увімкненим — відновлюємо після F5
+  refreshTimers();
+});
+// раз на 60 с звіряємо запущені таймери (людина могла стопнути з іншого пристрою)
+setInterval(refreshTimers, 60000);
 </script>
 </body>
 </html>
