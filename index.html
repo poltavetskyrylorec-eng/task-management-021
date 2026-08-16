@@ -1247,6 +1247,9 @@ function applyFilter() {
   if (document.getElementById('view-week').classList.contains('active'))  buildWeek();
   if (document.getElementById('view-month').classList.contains('active')) buildMonth();
   if (document.getElementById('view-team').classList.contains('active'))  buildTeam();
+  // Борда тут не було — тому після перемикання людини доводилось виходити
+  // з нього і заходити знову, щоб побачити оновлений набір.
+  if (document.getElementById('view-board').classList.contains('active')) buildBoard();
 }
 
 function setWho(id) {
@@ -2470,6 +2473,17 @@ function renderTeamTasks(rows, from, to){
 let TIMERS = {};          // { userId: { taskId, taskName, startMs } }
 let TICKER = null;
 
+// Фронт — джерело правди для startMs. Бек лише дзеркалить, щоб було видно
+// чужі запущені таймери. Раніше startMs жив ТІЛЬКИ на беку, і якщо запис
+// туди не долітав, «Стоп» не мав що записувати в ClickUp.
+const TKEY = 'dabudai_timers';
+function saveTimersLocal(){
+  try { localStorage.setItem(TKEY, JSON.stringify(TIMERS)); } catch(e){}
+}
+function loadTimersLocal(){
+  try { return JSON.parse(localStorage.getItem(TKEY) || '{}') || {}; } catch(e){ return {}; }
+}
+
 function timerKey(t){ return (t && t.assigneeId) || PERSONAL || TEAM[0].id; }
 function runningFor(taskId){
   for (const uid in TIMERS) if (TIMERS[uid] && TIMERS[uid].taskId === String(taskId)) return uid;
@@ -2489,10 +2503,18 @@ function durLabel(ms){
 
 async function refreshTimers(){
   if (USE_MOCK) return;
+  const local = Object.keys(TIMERS).length ? TIMERS : loadTimersLocal();
   try {
     const d = await api(GS_URL + '?action=getTimers');
-    TIMERS = (d && d.timers) || {};
-  } catch(e){ /* тихо: таймер не критичний для решти дашборда */ }
+    const remote = (d && d.timers) || {};
+    // Локальний запис головніший: він точно має startMs. Віддалені додаємо
+    // лише для тих, кого локально нема (таймер запущено з іншого пристрою).
+    const merged = Object.assign({}, remote, local);
+    TIMERS = merged;
+  } catch(e){
+    TIMERS = local;   // бек недоступний — лічильник далі йде локально
+  }
+  saveTimersLocal();
   paintTimers();
 }
 
@@ -2509,6 +2531,7 @@ async function startTimer(taskId){
   }
 
   TIMERS[uid] = { taskId:String(taskId), taskName:t.name, startMs: Date.now() };
+  saveTimersLocal();
   paintTimers();
 
   if (USE_MOCK) { toast('▶','Трекінг пішов (mock)'); return; }
@@ -2520,10 +2543,9 @@ async function startTimer(taskId){
     });
     toast('▶', member(uid).short + ' — трекінг пішов');
   } catch(e){
-    // старт не зберігся на беку — локальний лічильник збрехав би,
-    // бо після F5 (або через 60 с у refreshTimers) таймер просто зникне
-    delete TIMERS[uid]; paintTimers();
-    toast('⚠️','Таймер не стартував: ' + e.message);
+    // Бек не підтвердив старт — але лічильник НЕ прибираємо: startMs є
+    // локально, тож «Стоп» усе одно зможе записати час у ClickUp.
+    toast('⚠️','Бек не підтвердив старт, лічильник іде локально');
   }
 }
 
@@ -2532,6 +2554,7 @@ async function stopTimer(uid, silent){
   if (!cur) return;
   const elapsed = Date.now() - cur.startMs;
   delete TIMERS[uid];
+  saveTimersLocal();
   paintTimers();
 
   if (USE_MOCK) { if(!silent) toast('⏹','Записано ' + durLabel(elapsed)); return; }
@@ -2539,7 +2562,13 @@ async function stopTimer(uid, silent){
     const d = await api(GS_URL, {
       method:'POST',
       headers:{ 'Content-Type':'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action:'stopTimer', userId:uid })
+      body: JSON.stringify({
+        action:  'stopTimer',
+        userId:  uid,
+        taskId:  cur.taskId,
+        taskName:cur.taskName,
+        startMs: cur.startMs      // ← головне: бек пише час саме звідси
+      })
     });
     // Бекенд може відповісти 200, але з ok:false або durationMs:0 —
     // раніше ми це проковтували і малювали успішний тост, хоча в ClickUp
@@ -2557,7 +2586,12 @@ async function stopTimer(uid, silent){
     if (document.getElementById('view-board').classList.contains('active')) buildBoard();
     if (DR_TASK === cur.taskId) paintDrawerTimerBtn();
   } catch(e){
-    if (!silent) toast('⚠️','Час не записався: ' + e.message);
+    // Повертаємо таймер на місце: інакше відпрацьований час зникне
+    // безслідно, і людина навіть не зможе спробувати «Стоп» ще раз.
+    TIMERS[uid] = cur;
+    saveTimersLocal();
+    paintTimers();
+    if (!silent) toast('⚠️','Не записалось, таймер повернуто: ' + e.message);
   }
 }
 
@@ -2683,9 +2717,19 @@ function setBoardGroup(v, el){
   buildBoard();
 }
 
+// BY_ID будується з TASKS (зріз під фільтр), а борд у режимі «По людях»
+// працює з повним набором — тому для пошуку батька потрібен ширший доступ.
+function taskById(id){
+  return BY_ID[String(id)] || ALL_TASKS.find(x => x.id === String(id)) || null;
+}
+
 function boardTasks(){
-  return TASKS.filter(t => countsForTasks(t))
-              .filter(t => BOARD_SCOPE === 'all' ? true : t.status !== 'closed');
+  // У режимі «По людях» колонки — це самі люди, тож фільтр по людині тут
+  // безглуздий: він лишав би заповненою рівно одну колонку, а решту порожніми.
+  // Беремо повний набір команди незалежно від того, хто обраний зліва.
+  const src = BOARD_GROUP === 'who' ? ALL_TASKS : TASKS;
+  return src.filter(t => countsForTasks(t))
+            .filter(t => BOARD_SCOPE === 'all' ? true : t.status !== 'closed');
 }
 
 async function buildBoard(){
@@ -2713,8 +2757,11 @@ async function buildBoard(){
   });
 
   const done = list.filter(t => t.status === 'closed').length;
+  const scopeLabel = BOARD_GROUP === 'who'
+    ? 'вся команда · фільтр по людині тут не діє'
+    : (WHO === 'all' ? 'вся команда' : member(WHO).name);
   document.getElementById('bd-sub').textContent =
-    `${list.length} задач · ${done} закрито · ${WHO === 'all' ? 'вся команда' : member(WHO).name}`;
+    `${list.length} задач · ${done} закрито · ${scopeLabel}`;
 
   wrap.innerHTML = cols.map(c => {
     const items = (grouped[c.key] || []).sort(byDue);
@@ -2745,7 +2792,8 @@ function bcardHTML(t){
     ? `<span class="tag clickup">${esc(statusOf(t))}</span>`
     : (m ? `<span class="bcard-av" style="background:${m.color}" title="${esc(m.name)}">${m.short}</span>` : '');
   const att = t.attachCount ? `<span class="att-badge">📎 ${t.attachCount}</span>` : '';
-  const parent = t.parentId && BY_ID[t.parentId] ? `<div class="bcard-sub" title="${esc(BY_ID[t.parentId].name)}">↳ ${esc(BY_ID[t.parentId].name)}</div>` : '';
+  const par = t.parentId ? taskById(t.parentId) : null;
+  const parent = par ? `<div class="bcard-sub" title="${esc(par.name)}">↳ ${esc(par.name)}</div>` : '';
   return `<div class="bcard ${t.status === 'closed' ? 'done' : ''}" data-task="${t.id}" draggable="true"
                ondragstart="bcardDrag(event,this)" ondragend="this.classList.remove('dragging')"
                onclick="openTask('${t.id}')">
@@ -2778,7 +2826,7 @@ async function bcolDrop(ev, el){
   DRAG_ID = null;
   if (!id) return;
   const target = el.dataset.col;
-  const t = BY_ID[id] || ALL_TASKS.find(x => x.id === id);
+  const t = taskById(id);
   if (!t) return;
 
   if (BOARD_GROUP === 'who') { toast('ℹ️','Перепризначення виконавця поки не вмикав — тільки статуси'); return; }
@@ -3011,6 +3059,7 @@ document.querySelectorAll('#hz-seg .hz-btn').forEach(b => {
   b.classList.toggle('on', n === HORIZON);
 });
 applyTheme(localStorage.getItem('dabudai_theme') || 'dark');
+TIMERS = loadTimersLocal();   // лічильник цокає одразу, не чекаючи бекенду
 paintUp();
 paintAll();
 loadToday().then(() => {
