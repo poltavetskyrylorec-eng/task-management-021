@@ -638,7 +638,7 @@ body.personal .timerbar, .timerbar { left:222px; }
       </div>
     </div>
     <div class="panel-sync">
-      <button class="sync-btn" onclick="loadToday()">
+      <button class="sync-btn" onclick="loadToday(true)">
         <svg id="sync-ico" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 8A6 6 0 1 1 8 2M8 2l3 3M8 2l3-3" stroke-linecap="round"/></svg>
         Синхронізувати
       </button>
@@ -875,7 +875,7 @@ body.personal .timerbar, .timerbar { left:222px; }
         <button class="bd-tbtn on" onclick="setBoardGroup('status',this)">По статусах</button>
         <button class="bd-tbtn" onclick="setBoardGroup('who',this)">По людях</button>
       </div>
-      <button class="btn-ghost" onclick="loadToday()">Оновити</button>
+      <button class="btn-ghost" onclick="loadToday(true)">Оновити</button>
     </div>
   </div>
   <div class="board-scroll">
@@ -917,7 +917,9 @@ body.personal .timerbar, .timerbar { left:222px; }
               <th class="num">Вчасно</th>
               <th class="num">Затримка</th>
               <th class="num">Год. план</th>
-              <th class="num">Год. факт</th>
+              <th class="num">Закрито</th>
+              <th class="num" title="Реально відтрекований час у ClickUp">Факт</th>
+              <th class="num" title="Факт ÷ план на задачах, де є обидва числа. Більше 1 — закладаємо менше, ніж витрачаємо">Точність</th>
               <th class="num">Простр.</th>
               <th>Статус</th>
             </tr>
@@ -1275,7 +1277,9 @@ function renderWhoList() {
   }).join('');
 }
 
-async function loadToday() {
+// force=true — кнопка «Синхронізувати»: обходить 90-секундний кеш на беку.
+// Автоматичні виклики кеш використовують, інакше сенсу від нього нема.
+async function loadToday(force) {
   const ico = document.getElementById('sync-ico');
   ico.classList.add('spin');
   showBanner('today','load','Завантаження задач з ClickUp…');
@@ -1286,9 +1290,10 @@ async function loadToday() {
       ALL_TASKS = mockTasks();
     } else {
       // scope=team — бекенд віддає задачі ВСІХ людей з TEAM одним запитом
-      const q = PERSONAL
+      const q = (PERSONAL
         ? '?action=getTasks&user=' + encodeURIComponent(PERSONAL)   // тільки свої
-        : '?action=getTasks&scope=team';                            // вся команда
+        : '?action=getTasks&scope=team')                            // вся команда
+        + (force ? '&fresh=1' : '');
       const data = await api(GS_URL + q);
       ALL_TASKS = (data.tasks || []).map(normalizeTask).filter(Boolean);
     }
@@ -2243,6 +2248,12 @@ function analyzeRange(list, from, to){
   const now = Date.now();
   const s = { total:0, done:0, open:0, onTime:0, late:0, overdueOpen:0, noDue:0,
               minsPlan:0, minsDone:0, delaySum:0, delayN:0,
+              // ФАКТ: реально відтрекований час.
+              // factN — на скількох задачах факт узагалі є. Без цього числа
+              // коефіцієнт точності читати не можна: «недооцінюємо вдвічі»
+              // по трьох задачах з двохсот виглядає переконливо і при цьому
+              // нічого не означає.
+              minsFact:0, factN:0, cmpPlan:0, cmpFact:0, cmpN:0,
               pri:{urgent:0,high:0,normal:0,low:0} };
 
   list.forEach(t => {
@@ -2252,6 +2263,20 @@ function analyzeRange(list, from, to){
     s.total++;
     if (!t.hasKidsInSet) s.minsPlan += t.mins;   // час лише з листків
     if (!t.dueMs) s.noDue++;
+
+    // Факт сумуємо по ВСІХ задачах, включно з батьківськими: кожен запис
+    // часу в ClickUp належить рівно одній задачі, тож подвійного рахунку
+    // тут не буває — на відміну від оцінок, які на батьку дублюють суму дітей.
+    const fact = Math.round((t.trackedMs || 0) / 60000);
+    if (fact > 0) {
+      s.minsFact += fact;
+      s.factN++;
+      // Порівнюємо план з фактом лише там, де є ОБИДВА числа —
+      // інакше коефіцієнт поїде на задачах без оцінки або без трекінгу.
+      if (!t.hasKidsInSet && t.mins > 0) {
+        s.cmpPlan += t.mins; s.cmpFact += fact; s.cmpN++;
+      }
+    }
 
     if (t.status === 'closed') {
       s.done++;
@@ -2275,6 +2300,11 @@ function analyzeRange(list, from, to){
   s.avgDelayDays = s.delayN > 0 ? Math.round(s.delaySum / s.delayN / 86400000 * 10) / 10 : 0;
   s.hoursPlan = Math.round(s.minsPlan / 60 * 10) / 10;
   s.hoursDone = Math.round(s.minsDone / 60 * 10) / 10;
+  s.hoursFact = Math.round(s.minsFact / 60 * 10) / 10;
+  // Покриття трекінгом: яка частка задач періоду взагалі має факт.
+  s.factCover = s.total > 0 ? Math.round(s.factN / s.total * 100) : 0;
+  // Коефіцієнт точності оцінок: >1 означає «закладаємо менше, ніж витрачаємо».
+  s.factRatio = s.cmpPlan > 0 ? Math.round(s.cmpFact / s.cmpPlan * 100) / 100 : 0;
   return s;
 }
 
@@ -2337,9 +2367,28 @@ function renderTeam(from, to){
           <div class="tm-bmeta"><span>Години</span><span>${s.hoursDone}/${s.hoursPlan}г</span></div>
           <div class="tm-btrack"><div class="tm-bfill" style="width:${s.pctH}%;background:${r.color};opacity:.5"></div></div>
         </div>
+        <div class="tm-brow">
+          <div class="tm-bmeta">
+            <span>Факт${s.factCover ? ' · ' + s.factCover + '% задач' : ''}</span>
+            <span>${s.hoursFact > 0 ? s.hoursFact + 'г' : 'не трекався'}</span>
+          </div>
+          <div class="tm-btrack"><div class="tm-bfill" style="width:${s.hoursPlan>0?Math.min(100, Math.round(s.hoursFact/s.hoursPlan*100)):0}%;background:var(--accent3)"></div></div>
+        </div>
       </div>
     </div>`;
   }).join('');
+
+  // Коефіцієнт показуємо лише коли є на чому його рахувати.
+  // На двох-трьох задачах цифра виглядає переконливо і при цьому
+  // не означає нічого — краще чесний прочерк.
+  const ratioCell = (s) => {
+    if (!s.cmpN || !s.factRatio) return '<span style="color:var(--text3)">—</span>';
+    const weak = s.cmpN < 5;
+    const col  = s.factRatio > 1.25 ? 'var(--danger)'
+               : s.factRatio < 0.75 ? 'var(--warn)' : 'var(--accent)';
+    return `<span style="color:${weak?'var(--text3)':col}">×${s.factRatio.toFixed(2)}`
+         + `<span style="font-size:10px;color:var(--text3)"> (${s.cmpN})</span></span>`;
+  };
 
   // ── порівняльна таблиця ──
   const rowHTML = (av, nm, color, s, bold) => {
@@ -2354,6 +2403,8 @@ function renderTeam(from, to){
       <td class="num">${s.avgDelayDays>0?'+'+s.avgDelayDays+'д':'—'}</td>
       <td class="num">${s.hoursPlan}г</td>
       <td class="num" style="color:var(--accent2)">${s.hoursDone}г</td>
+      <td class="num" style="color:${s.hoursFact>0?'var(--accent3)':'var(--text3)'}">${s.hoursFact>0?s.hoursFact+'г':'—'}</td>
+      <td class="num" title="${s.cmpN} задач з планом і фактом">${ratioCell(s)}</td>
       <td class="num" style="color:${s.overdueOpen>0?'var(--danger)':'var(--text3)'}">${s.overdueOpen}</td>
       <td><span class="sbadge ${st}">${s.total===0?'—':stLabel}</span></td>
     </tr>`;
@@ -2406,7 +2457,9 @@ function renderDetail(rows){
         ${cell(s.overdueOpen,'Прострочено зараз', s.overdueOpen>0?'var(--danger)':'var(--text3)')}
         ${cell(s.noDue,'Без дедлайну','var(--text3)')}
         ${cell(s.hoursPlan+'г','Год. план')}
-        ${cell(s.hoursDone+'г','Год. факт','var(--accent2)')}
+        ${cell(s.hoursDone+'г','Закрито (оцінка)','var(--accent2)')}
+        ${cell((s.hoursFact>0?s.hoursFact+'г':'—'),'Факт відтрекано','var(--accent3)')}
+        ${cell((s.cmpN?'×'+s.factRatio.toFixed(2):'—'),'Точність оцінок')}
         ${cell(s.pri.urgent,'Терміново відкр.', s.pri.urgent>0?'var(--accent3)':'var(--text3)')}
         ${cell(s.pri.high,'Високий відкр.','var(--text3)')}
       </div>
@@ -3088,12 +3141,12 @@ applyTheme(localStorage.getItem('dabudai_theme') || 'dark');
 TIMERS = loadTimersLocal();   // цокає одразу; sanitize відсіє старий формат
 paintUp();
 paintAll();
-loadToday().then(() => {
-  // статуси для колонок борда і селекта в картці задачі
-  loadStatuses();
-  // якщо хтось лишив таймер увімкненим — відновлюємо після F5
-  refreshTimers();
-});
+// Три незалежні запити йдуть ПАРАЛЕЛЬНО. Раніше statuses і timers чекали
+// на завершення loadToday, і холодний старт складався з трьох послідовних
+// звернень до Apps Script — звідси й довге очікування після F5.
+loadToday();
+loadStatuses();
+refreshTimers();
 // раз на 60 с звіряємо запущені таймери (людина могла стопнути з іншого пристрою)
 setInterval(refreshTimers, 60000);
 </script>
