@@ -2549,11 +2549,11 @@ async function startTimer(taskId){
   }
 }
 
-async function stopTimer(uid, silent){
-  const cur = TIMERS[uid];
+async function stopTimer(taskId, silent){
+  const cur = TIMERS[String(taskId)];
   if (!cur) return;
   const elapsed = Date.now() - cur.startMs;
-  delete TIMERS[uid];
+  delete TIMERS[String(taskId)];
   saveTimersLocal();
   paintTimers();
 
@@ -2564,10 +2564,10 @@ async function stopTimer(uid, silent){
       headers:{ 'Content-Type':'text/plain;charset=utf-8' },
       body: JSON.stringify({
         action:  'stopTimer',
-        userId:  uid,
-        taskId:  cur.taskId,
-        taskName:cur.taskName,
-        startMs: cur.startMs      // ← головне: бек пише час саме звідси
+        taskId: String(taskId),
+        userId: cur.userId,
+        taskName: cur.taskName,
+        startMs: cur.startMs
       })
     });
     // Бекенд може відповісти 200, але з ok:false або durationMs:0 —
