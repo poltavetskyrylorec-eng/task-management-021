@@ -919,7 +919,7 @@ body.personal .timerbar, .timerbar { left:222px; }
               <th class="num">Год. план</th>
               <th class="num">Закрито</th>
               <th class="num" title="Реально відтрекований час у ClickUp">Факт</th>
-              <th class="num" title="Факт ÷ план на задачах, де є обидва числа. Більше 1 — закладаємо менше, ніж витрачаємо">Точність</th>
+              <th class="num" title="Факт ÷ оцінка. Рахується ЛИШЕ по закритих задачах — на відкритих факт ще неповний. Більше 1 — закладаємо менше, ніж витрачаємо">Точність</th>
               <th class="num">Простр.</th>
               <th>Статус</th>
             </tr>
@@ -1015,7 +1015,7 @@ body.personal .timerbar, .timerbar { left:222px; }
 // Apps Script: getTasks (тільки мої задачі з ClickUp), logTask, closeTask, місячна аналітика
 // Штамп збірки. Якщо в консолі не видно саме цього рядка — у браузері
 // лежить старий файл, і шукати проблему в логіці марно.
-const BUILD = 'v2.4 · fact-from-time-entries';
+const BUILD = 'v2.5 · fact-bar-fix';
 console.log('%cDABUDAI Tracker ' + BUILD, 'color:#00E5A0;font-weight:bold');
 
 const GS_URL = 'https://script.google.com/macros/s/AKfycbzScxFH5InOW__W-je2mVUMLMBhMTS5dFQWFfrhfGTLTehTClkAFGi-VcpF8SwAMhJZ/exec';const N8N = {
@@ -2359,9 +2359,12 @@ function mergeFact(s, uid){
     if (uid !== 'all' && owner !== uid) return;
     const ms1 = FACT.byTask[tid];
     ms += ms1; n++;
-    // Точність рахуємо лише де є ОБИДВА числа й задача без підзадач:
-    // на батьку оцінка дублює суму дітей і коефіцієнт поїхав би.
-    if (t && !t.hasKidsInSet && t.mins > 0) {
+    // Точність — ТІЛЬКИ по закритих задачах. На відкритій факт неповний
+    // за визначенням: натрековано 3 години з двадцяти запланованих — це не
+    // «вклалися у восьму частину оцінки», а «робота ще йде». Раніше такі
+    // задачі тягнули коефіцієнт у підлогу.
+    // Батьківські теж пропускаємо: там оцінка дублює суму дітей.
+    if (t && t.status === 'closed' && !t.hasKidsInSet && t.mins > 0) {
       cmpPlan += t.mins; cmpFact += Math.round(ms1 / 60000); cmpN++;
     }
   });
@@ -2400,6 +2403,39 @@ function renderTeam(from, to){
   const S = TEAM_STATS;
   if (!S || !S.members) return;
 
+  // Смуга факту.
+  //
+  // План і факт у періоді рахуються за РІЗНИМИ правилами, і це навмисно:
+  // план — за дедлайном задачі, факт — за датою запису часу. Інакше не
+  // відповісти на питання «скільки я сьогодні відпрацював», бо працюєш ти
+  // сьогодні над задачами з дедлайнами по всьому місяцю.
+  //
+  // Наслідок: буває «0 задач у плані, 3 години факту». Раніше я ділив факт
+  // на план, при нулі обрізав до 0%, і смуга стояла порожня поруч із живим
+  // числом — виглядало як поломка. Тепер такий стан підписаний явно.
+  const factBar = (s) => {
+    if (!s.hoursFact) {
+      return `<div class="tm-brow">
+        <div class="tm-bmeta"><span>Факт</span><span>не трекався</span></div>
+        <div class="tm-btrack"><div class="tm-bfill" style="width:0%;background:var(--accent3)"></div></div>
+      </div>`;
+    }
+    const noPlan  = s.hoursPlan <= 0;
+    const over    = !noPlan && s.hoursFact > s.hoursPlan;
+    const width   = noPlan ? 100 : Math.min(100, Math.round(s.hoursFact / s.hoursPlan * 100));
+    const color   = noPlan ? 'var(--text3)' : (over ? 'var(--danger)' : 'var(--accent3)');
+    const note    = noPlan ? 'поза планом періоду'
+                  : (over ? 'понад план' : s.factN + ' задач');
+    return `<div class="tm-brow">
+      <div class="tm-bmeta">
+        <span title="${noPlan ? 'Час натрековано на задачах, чиї дедлайни поза цим періодом' : 'Відтрекований час проти запланованого'}">Факт · ${note}</span>
+        <span>${s.hoursFact}г${noPlan ? '' : ' / ' + s.hoursPlan + 'г'}</span>
+      </div>
+      <div class="tm-btrack"><div class="tm-bfill" style="width:${width}%;background:${color}"></div></div>
+    </div>`;
+  };
+
+
   const rows = S.members.map(m => Object.assign({}, m, { color: member(m.id).color, role: member(m.id).role }));
 
   // ── картки ──
@@ -2426,13 +2462,7 @@ function renderTeam(from, to){
           <div class="tm-bmeta"><span>Години</span><span>${s.hoursDone}/${s.hoursPlan}г</span></div>
           <div class="tm-btrack"><div class="tm-bfill" style="width:${s.pctH}%;background:${r.color};opacity:.5"></div></div>
         </div>
-        <div class="tm-brow">
-          <div class="tm-bmeta">
-            <span>Факт${s.factN ? ' · ' + s.factN + ' задач' : ''}</span>
-            <span>${s.hoursFact > 0 ? s.hoursFact + 'г' : 'не трекався'}</span>
-          </div>
-          <div class="tm-btrack"><div class="tm-bfill" style="width:${s.hoursPlan>0?Math.min(100, Math.round(s.hoursFact/s.hoursPlan*100)):0}%;background:var(--accent3)"></div></div>
-        </div>
+        ${factBar(s)}
       </div>
     </div>`;
   }).join('');
@@ -2463,7 +2493,7 @@ function renderTeam(from, to){
       <td class="num">${s.hoursPlan}г</td>
       <td class="num" style="color:var(--accent2)">${s.hoursDone}г</td>
       <td class="num" style="color:${s.hoursFact>0?'var(--accent3)':'var(--text3)'}">${s.hoursFact>0?s.hoursFact+'г':'—'}</td>
-      <td class="num" title="${s.cmpN} задач з планом і фактом">${ratioCell(s)}</td>
+      <td class="num" title="${s.cmpN} закритих задач, де є і оцінка, і факт">${ratioCell(s)}</td>
       <td class="num" style="color:${s.overdueOpen>0?'var(--danger)':'var(--text3)'}">${s.overdueOpen}</td>
       <td><span class="sbadge ${st}">${s.total===0?'—':stLabel}</span></td>
     </tr>`;
