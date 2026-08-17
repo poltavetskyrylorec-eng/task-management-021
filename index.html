@@ -2470,25 +2470,51 @@ function renderTeamTasks(rows, from, to){
 // Ключ таймера = ВИКОНАВЕЦЬ задачі: «задача Каті → таймер Каті».
 // Один таймер на людину, кілька людей паралельно — ок.
 
-let TIMERS = {};          // { userId: { taskId, taskName, startMs } }
+let TIMERS = {};          // { taskId: { taskId, taskName, startMs, userId } }
 let TICKER = null;
 
 // Фронт — джерело правди для startMs. Бек лише дзеркалить, щоб було видно
 // чужі запущені таймери. Раніше startMs жив ТІЛЬКИ на беку, і якщо запис
 // туди не долітав, «Стоп» не мав що записувати в ClickUp.
 const TKEY = 'dabudai_timers';
+
+// Ключ сховища — ID ЗАДАЧІ, не людини. Саме це дозволяє тримати
+// кілька паралельних таймерів: раніше ключем був userId, тож другий
+// запуск тієї ж людини затирав перший.
+//
+// sanitize() — головний запобіжник. Він викидає записи, у яких ключ
+// не збігається з rec.taskId. Без цього в наборі лишається сміття
+// від старої схеми (ключі виду timer_266462192) і малює фантомні
+// лічильники, які нічим не зупинити.
+function sanitizeTimers(obj){
+  const out = {};
+  Object.keys(obj || {}).forEach(k => {
+    const r = obj[k];
+    if (!r || typeof r !== 'object') return;
+    if (!r.taskId || String(r.taskId) !== String(k)) return;   // ключ ≠ задача → сміття
+    if (!r.startMs || !Number(r.startMs)) return;
+    out[String(k)] = {
+      taskId:   String(r.taskId),
+      taskName: r.taskName || '',
+      startMs:  Number(r.startMs),
+      userId:   r.userId ? String(r.userId) : (PERSONAL || TEAM[0].id)
+    };
+  });
+  return out;
+}
+
 function saveTimersLocal(){
   try { localStorage.setItem(TKEY, JSON.stringify(TIMERS)); } catch(e){}
 }
 function loadTimersLocal(){
-  try { return JSON.parse(localStorage.getItem(TKEY) || '{}') || {}; } catch(e){ return {}; }
+  try {
+    const raw = JSON.parse(localStorage.getItem(TKEY) || '{}') || {};
+    return sanitizeTimers(raw);   // старий формат (ключ = userId) відсіється тут
+  } catch(e){ return {}; }
 }
 
 function timerKey(t){ return (t && t.assigneeId) || PERSONAL || TEAM[0].id; }
-function runningFor(taskId){
-  for (const uid in TIMERS) if (TIMERS[uid] && TIMERS[uid].taskId === String(taskId)) return uid;
-  return null;
-}
+function isRunning(taskId){ return !!TIMERS[String(taskId)]; }
 function hms(ms){
   const s = Math.max(0, Math.floor(ms/1000));
   const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), ss = s%60;
@@ -2503,16 +2529,16 @@ function durLabel(ms){
 
 async function refreshTimers(){
   if (USE_MOCK) return;
-  const local = Object.keys(TIMERS).length ? TIMERS : loadTimersLocal();
+  const local = sanitizeTimers(Object.keys(TIMERS).length ? TIMERS : loadTimersLocal());
   try {
     const d = await api(GS_URL + '?action=getTimers');
-    const remote = (d && d.timers) || {};
-    // Локальний запис головніший: він точно має startMs. Віддалені додаємо
-    // лише для тих, кого локально нема (таймер запущено з іншого пристрою).
-    const merged = Object.assign({}, remote, local);
-    TIMERS = merged;
+    const remote = sanitizeTimers((d && d.timers) || {});
+    // Локальний запис головніший: він точно має вірний startMs.
+    // Віддалені додаються лише для задач, яких локально нема —
+    // це таймери, запущені з іншого пристрою.
+    TIMERS = Object.assign({}, remote, local);
   } catch(e){
-    TIMERS = local;   // бек недоступний — лічильник далі йде локально
+    TIMERS = local;   // бек недоступний — лічильники йдуть локально
   }
   saveTimersLocal();
   paintTimers();
@@ -2523,14 +2549,13 @@ async function startTimer(taskId){
   if (!t) return;
   if (t.contextOnly) { toast('🔒','Задача чужа — трекінг у її виконавця'); return; }
   const uid = timerKey(t);
+  const tid = String(taskId);
 
-  // якщо в цієї людини вже щось цокає — спершу зупиняємо (час не губиться)
-  if (TIMERS[uid]) {
-    if (TIMERS[uid].taskId === String(taskId)) { stopTimer(uid); return; }
-    await stopTimer(uid, true);
-  }
+  // Повторний клік по тій самій задачі = зупинка.
+  // Інші таймери НЕ чіпаємо — у цьому весь сенс паралельного трекінгу.
+  if (TIMERS[tid]) { stopTimer(tid); return; }
 
-  TIMERS[uid] = { taskId:String(taskId), taskName:t.name, startMs: Date.now() };
+  TIMERS[tid] = { taskId: tid, taskName: t.name, startMs: Date.now(), userId: uid };
   saveTimersLocal();
   paintTimers();
 
@@ -2539,9 +2564,9 @@ async function startTimer(taskId){
     await api(GS_URL, {
       method:'POST',
       headers:{ 'Content-Type':'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action:'startTimer', userId:uid, taskId:String(taskId), taskName:t.name, startMs:TIMERS[uid].startMs })
+      body: JSON.stringify({ action:'startTimer', userId:uid, taskId:tid, taskName:t.name, startMs:TIMERS[tid].startMs })
     });
-    toast('▶', member(uid).short + ' — трекінг пішов');
+    toast('▶', 'Трекінг пішов · ' + Object.keys(TIMERS).length + ' активних');
   } catch(e){
     // Бек не підтвердив старт — але лічильник НЕ прибираємо: startMs є
     // локально, тож «Стоп» усе одно зможе записати час у ClickUp.
@@ -2550,10 +2575,12 @@ async function startTimer(taskId){
 }
 
 async function stopTimer(taskId, silent){
-  const cur = TIMERS[String(taskId)];
+  const tid = String(taskId);
+  const cur = TIMERS[tid];
   if (!cur) return;
+  const uid = cur.userId || PERSONAL || TEAM[0].id;
   const elapsed = Date.now() - cur.startMs;
-  delete TIMERS[String(taskId)];
+  delete TIMERS[tid];
   saveTimersLocal();
   paintTimers();
 
@@ -2564,10 +2591,10 @@ async function stopTimer(taskId, silent){
       headers:{ 'Content-Type':'text/plain;charset=utf-8' },
       body: JSON.stringify({
         action:  'stopTimer',
-        taskId: String(taskId),
-        userId: cur.userId,
-        taskName: cur.taskName,
-        startMs: cur.startMs
+        userId:  uid,
+        taskId:  tid,
+        taskName:cur.taskName,
+        startMs: cur.startMs      // ← головне: бек пише час саме звідси
       })
     });
     // Бекенд може відповісти 200, але з ok:false або durationMs:0 —
@@ -2588,7 +2615,7 @@ async function stopTimer(taskId, silent){
   } catch(e){
     // Повертаємо таймер на місце: інакше відпрацьований час зникне
     // безслідно, і людина навіть не зможе спробувати «Стоп» ще раз.
-    TIMERS[uid] = cur;
+    TIMERS[tid] = cur;
     saveTimersLocal();
     paintTimers();
     if (!silent) toast('⚠️','Не записалось, таймер повернуто: ' + e.message);
@@ -2597,15 +2624,14 @@ async function stopTimer(taskId, silent){
 
 function toggleTimer(taskId, ev){
   if (ev) { ev.stopPropagation(); ev.preventDefault(); }
-  const uid = runningFor(taskId);
-  if (uid) stopTimer(uid); else startTimer(taskId);
+  if (isRunning(taskId)) stopTimer(taskId); else startTimer(taskId);
 }
 
 function paintTimers(){
   const bar = document.getElementById('timerbar');
   const keys = Object.keys(TIMERS).filter(k => TIMERS[k]);
-  bar.innerHTML = keys.map(uid => {
-    const c = TIMERS[uid], m = member(uid);
+  bar.innerHTML = keys.map(tid => {
+    const c = TIMERS[tid], m = member(c.userId);
     return `<div class="tbar-item">
       <span class="tbar-pulse"></span>
       <div class="tbar-body">
@@ -2613,19 +2639,19 @@ function paintTimers(){
         <div class="tbar-who">${m.short} · ${m.name}</div>
       </div>
       <div class="tbar-clock mono" data-tstart="${c.startMs}">00:00:00</div>
-      <button class="tbar-stop" onclick="stopTimer('${uid}')" title="Зупинити і записати в ClickUp">⏹</button>
+      <button class="tbar-stop" onclick="stopTimer('${tid}')" title="Зупинити і записати в ClickUp">⏹</button>
     </div>`;
   }).join('');
 
   // підсвітка карток, що зараз трекаються
   document.querySelectorAll('.tcard[data-task]').forEach(c => {
-    const on = !!runningFor(c.dataset.task);
+    const on = isRunning(c.dataset.task);
     c.classList.toggle('tracking', on);
     const b = c.querySelector('.t-play');
     if (b) { b.classList.toggle('on', on); b.textContent = on ? '⏹' : '▶'; b.title = on ? 'Зупинити трекінг' : 'Почати трекінг'; }
   });
   document.querySelectorAll('.bcard[data-task]').forEach(c => {
-    const on = !!runningFor(c.dataset.task);
+    const on = isRunning(c.dataset.task);
     c.classList.toggle('tracking', on);
     const b = c.querySelector('.bcard-play');
     if (b) { b.classList.toggle('on', on); b.textContent = on ? '⏹' : '▶'; }
@@ -2959,7 +2985,7 @@ function paintDetail(det){
 function paintDrawerTimerBtn(){
   const b = document.getElementById('dr-timer-btn');
   if (!b || !DR_TASK) return;
-  const on = !!runningFor(DR_TASK);
+  const on = isRunning(DR_TASK);
   b.className = 'dr-btn ' + (on ? 'stop' : 'go');
   b.textContent = on ? '⏹ Зупинити трекінг' : '▶ Почати трекінг';
 }
@@ -3059,7 +3085,7 @@ document.querySelectorAll('#hz-seg .hz-btn').forEach(b => {
   b.classList.toggle('on', n === HORIZON);
 });
 applyTheme(localStorage.getItem('dabudai_theme') || 'dark');
-TIMERS = loadTimersLocal();   // лічильник цокає одразу, не чекаючи бекенду
+TIMERS = loadTimersLocal();   // цокає одразу; sanitize відсіє старий формат
 paintUp();
 paintAll();
 loadToday().then(() => {
