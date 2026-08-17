@@ -2224,6 +2224,7 @@ async function buildTeam(){
   // Рахуємо ЛОКАЛЬНО з ALL_TASKS: getTasks уже віддав повний набір задач
   // разом із закритими, тож будь-який з 12 місяців рахується миттєво
   // й без жодного зайвого запиту до ClickUp (їхні ліміти на нас тиснуть).
+  await loadFact(from, to);        // записи часу рівно за цей період
   TEAM_STATS = computeTeamStats(from, to);
   renderTeam(from, to);
 }
@@ -2264,19 +2265,11 @@ function analyzeRange(list, from, to){
     if (!t.hasKidsInSet) s.minsPlan += t.mins;   // час лише з листків
     if (!t.dueMs) s.noDue++;
 
-    // Факт сумуємо по ВСІХ задачах, включно з батьківськими: кожен запис
-    // часу в ClickUp належить рівно одній задачі, тож подвійного рахунку
-    // тут не буває — на відміну від оцінок, які на батьку дублюють суму дітей.
-    const fact = Math.round((t.trackedMs || 0) / 60000);
-    if (fact > 0) {
-      s.minsFact += fact;
-      s.factN++;
-      // Порівнюємо план з фактом лише там, де є ОБИДВА числа —
-      // інакше коефіцієнт поїде на задачах без оцінки або без трекінгу.
-      if (!t.hasKidsInSet && t.mins > 0) {
-        s.cmpPlan += t.mins; s.cmpFact += fact; s.cmpN++;
-      }
-    }
+    // ФАКТ тут НЕ рахуємо. Цей цикл відсіює задачі за inPeriod(), тобто за
+    // ДЕДЛАЙНОМ. Але відтрекований час належить дню, коли його трекали, а не
+    // дедлайну задачі: година, витрачена сьогодні на задачу з беклогу, має
+    // бути видна саме сьогодні. Факт приходить окремо, з records ClickUp,
+    // і домішується у mergeFact() нижче.
 
     if (t.status === 'closed') {
       s.done++;
@@ -2326,15 +2319,59 @@ function weeklyBreakdown(list, from, to){
   return out;
 }
 
+// FACT.byTask — { taskId: мілісекунди }, записи часу рівно за обраний період.
+// Прив'язка до людини йде через ВИКОНАВЦЯ задачі, а не через автора запису:
+// токен спільний, тож автором усіх записів числиться його власник.
+let FACT = { byTask:{}, totalMs:0, entries:0, loaded:false };
+
+async function loadFact(from, to){
+  if (USE_MOCK) { FACT = { byTask:{}, totalMs:0, entries:0, loaded:true }; return; }
+  try {
+    const d = await api(GS_URL + '?action=getTimeEntries&from=' + from + '&to=' + to);
+    FACT = { byTask:(d && d.byTask) || {}, totalMs:(d && d.totalMs) || 0,
+             entries:(d && d.entries) || 0, loaded:true };
+  } catch(e){
+    FACT = { byTask:{}, totalMs:0, entries:0, loaded:false };
+  }
+}
+
+// Домішує факт у готову статистику. uid === 'all' — уся команда.
+function mergeFact(s, uid){
+  let ms = 0, n = 0, cmpPlan = 0, cmpFact = 0, cmpN = 0;
+  Object.keys(FACT.byTask).forEach(tid => {
+    const t = BY_ID[tid] || ALL_TASKS.find(x => x.id === tid);
+    const owner = t ? t.assigneeId : null;
+    // Задача не з нашого набору (видалена, інший спейс) — у команду зараховуємо,
+    // в персональний зріз ні: невідомо, чия вона.
+    if (uid !== 'all' && owner !== uid) return;
+    const ms1 = FACT.byTask[tid];
+    ms += ms1; n++;
+    // Точність рахуємо лише де є ОБИДВА числа й задача без підзадач:
+    // на батьку оцінка дублює суму дітей і коефіцієнт поїхав би.
+    if (t && !t.hasKidsInSet && t.mins > 0) {
+      cmpPlan += t.mins; cmpFact += Math.round(ms1 / 60000); cmpN++;
+    }
+  });
+
+  s.minsFact  = Math.round(ms / 60000);
+  s.factN     = n;
+  s.hoursFact = Math.round(ms / 3600000 * 10) / 10;
+  s.factCover = s.total > 0 ? Math.round(n / s.total * 100) : 0;
+  s.cmpPlan = cmpPlan; s.cmpFact = cmpFact; s.cmpN = cmpN;
+  s.factRatio = cmpPlan > 0 ? Math.round(cmpFact / cmpPlan * 100) / 100 : 0;
+  return s;
+}
+
 function computeTeamStats(from, to){
   const scope = PERSONAL ? TEAM.filter(m => m.id === PERSONAL) : TEAM;
   const members = scope.map(m => {
     const list = ALL_TASKS.filter(t => t.assigneeId === m.id);
     return { id:m.id, name:m.name, short:m.short,
-             stats: analyzeRange(list, from, to),
+             stats: mergeFact(analyzeRange(list, from, to), m.id),
              weeks: weeklyBreakdown(list, from, to) };
   });
-  return { from, to, members, total: analyzeRange(ALL_TASKS, from, to) };
+  return { from, to, members,
+           total: mergeFact(analyzeRange(ALL_TASKS, from, to), 'all') };
 }
 
 function renderTeam(from, to){
@@ -2369,7 +2406,7 @@ function renderTeam(from, to){
         </div>
         <div class="tm-brow">
           <div class="tm-bmeta">
-            <span>Факт${s.factCover ? ' · ' + s.factCover + '% задач' : ''}</span>
+            <span>Факт${s.factN ? ' · ' + s.factN + ' задач' : ''}</span>
             <span>${s.hoursFact > 0 ? s.hoursFact + 'г' : 'не трекався'}</span>
           </div>
           <div class="tm-btrack"><div class="tm-bfill" style="width:${s.hoursPlan>0?Math.min(100, Math.round(s.hoursFact/s.hoursPlan*100)):0}%;background:var(--accent3)"></div></div>
