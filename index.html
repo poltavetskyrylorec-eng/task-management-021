@@ -1015,7 +1015,7 @@ body.personal .timerbar, .timerbar { left:222px; }
 // Apps Script: getTasks (тільки мої задачі з ClickUp), logTask, closeTask, місячна аналітика
 // Штамп збірки. Якщо в консолі не видно саме цього рядка — у браузері
 // лежить старий файл, і шукати проблему в логіці марно.
-const BUILD = 'v2.5 · fact-bar-fix';
+const BUILD = 'v2.6 · overdue-is-current-state';
 console.log('%cDABUDAI Tracker ' + BUILD, 'color:#00E5A0;font-weight:bold');
 
 const GS_URL = 'https://script.google.com/macros/s/AKfycbzScxFH5InOW__W-je2mVUMLMBhMTS5dFQWFfrhfGTLTehTClkAFGi-VcpF8SwAMhJZ/exec';const N8N = {
@@ -2285,9 +2285,21 @@ function analyzeRange(list, from, to){
       }
     } else {
       s.open++;
-      if (t.dueMs && t.dueMs < now) s.overdueOpen++;
+      // overdueOpen тут НЕ рахуємо — див. окремий прохід нижче
       if (s.pri[t.priority] !== undefined) s.pri[t.priority]++;
     }
+  });
+
+  // ── ПОТОЧНИЙ СТАН, поза періодом ──
+  // «Прострочено зараз» — це стан на цю хвилину, а не подія періоду.
+  // Прострочена задача має дедлайн У МИНУЛОМУ, тож у період «Сьогодні»
+  // чи «Тиждень» вона не потрапляє за визначенням — і лічильник показував
+  // нуль, хоча насправді таких задач десятки. Рахуємо окремим проходом
+  // по всьому набору людини, незалежно від обраного періоду.
+  list.forEach(t => {
+    if (t.contextOnly) return;
+    if (t.status === 'closed') return;
+    if (t.dueMs && t.dueMs < now) s.overdueOpen++;
   });
 
   s.pct  = s.total > 0 ? Math.round(s.done / s.total * 100) : 0;
