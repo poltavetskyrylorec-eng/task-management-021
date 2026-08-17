@@ -597,7 +597,7 @@ body.personal .timerbar, .timerbar { left:222px; }
   </div>
   <div class="sidebar-foot">
     <div class="avatar">КП</div>
-    <div><div class="u-name">Кирило П.</div><div class="u-role">Founder</div></div>
+    <div><div class="u-name">Кирило П.</div><div class="u-role" id="u-build">Founder</div></div>
     <button class="theme-btn" id="theme-btn" onclick="toggleTheme()" title="Світла / темна тема">☀</button>
   </div>
 </nav>
@@ -1013,6 +1013,11 @@ body.personal .timerbar, .timerbar { left:222px; }
 // (токен ClickUp живе на бекенді Apps Script, не у фронті)
 // ════════════════════════════════════════════
 // Apps Script: getTasks (тільки мої задачі з ClickUp), logTask, closeTask, місячна аналітика
+// Штамп збірки. Якщо в консолі не видно саме цього рядка — у браузері
+// лежить старий файл, і шукати проблему в логіці марно.
+const BUILD = 'v2.4 · fact-from-time-entries';
+console.log('%cDABUDAI Tracker ' + BUILD, 'color:#00E5A0;font-weight:bold');
+
 const GS_URL = 'https://script.google.com/macros/s/AKfycbzScxFH5InOW__W-je2mVUMLMBhMTS5dFQWFfrhfGTLTehTClkAFGi-VcpF8SwAMhJZ/exec';const N8N = {
   month: 'https://dabudai.app.n8n.cloud/webhook/dabudai-month'
 };
@@ -2326,12 +2331,20 @@ let FACT = { byTask:{}, totalMs:0, entries:0, loaded:false };
 
 async function loadFact(from, to){
   if (USE_MOCK) { FACT = { byTask:{}, totalMs:0, entries:0, loaded:true }; return; }
+  const url = GS_URL + '?action=getTimeEntries&from=' + from + '&to=' + to;
   try {
-    const d = await api(GS_URL + '?action=getTimeEntries&from=' + from + '&to=' + to);
+    const d = await api(url);
     FACT = { byTask:(d && d.byTask) || {}, totalMs:(d && d.totalMs) || 0,
              entries:(d && d.entries) || 0, loaded:true };
+    console.log('[FACT]', FACT.entries, 'записів,',
+                Object.keys(FACT.byTask).length, 'задач,',
+                Math.round(FACT.totalMs/60000), 'хв', FACT.byTask);
   } catch(e){
+    // Раніше помилка тут гинула мовчки, і в таблиці просто стояли прочерки —
+    // не відрізнити «нічого не натрековано» від «запит не дійшов».
     FACT = { byTask:{}, totalMs:0, entries:0, loaded:false };
+    console.error('[FACT] запит провалився:', e.message, url);
+    toast('⚠️','Факт не завантажився: ' + e.message);
   }
 }
 
@@ -2359,6 +2372,15 @@ function mergeFact(s, uid){
   s.factCover = s.total > 0 ? Math.round(n / s.total * 100) : 0;
   s.cmpPlan = cmpPlan; s.cmpFact = cmpFact; s.cmpN = cmpN;
   s.factRatio = cmpPlan > 0 ? Math.round(cmpFact / cmpPlan * 100) / 100 : 0;
+
+  if (uid === 'all' && FACT.loaded) {
+    const unknown = Object.keys(FACT.byTask).filter(tid =>
+      !BY_ID[tid] && !ALL_TASKS.some(x => x.id === tid));
+    if (unknown.length) {
+      console.warn('[FACT] задачі з часом, яких нема в наборі:', unknown,
+                   '— час зарахований у команду, але не в персональні зрізи');
+    }
+  }
   return s;
 }
 
@@ -3175,6 +3197,7 @@ document.querySelectorAll('#hz-seg .hz-btn').forEach(b => {
   b.classList.toggle('on', n === HORIZON);
 });
 applyTheme(localStorage.getItem('dabudai_theme') || 'dark');
+{ const el = document.getElementById('u-build'); if (el) el.textContent = 'Founder · ' + BUILD.split(' ')[0]; }
 TIMERS = loadTimersLocal();   // цокає одразу; sanitize відсіє старий формат
 paintUp();
 paintAll();
