@@ -328,6 +328,36 @@ body::before { content:''; position:fixed; inset:0; background-image: linear-gra
    відсоткові margin рахуються від ШИРИНИ батька, а не від висоти. При
    ширині колонки ~470px і висоті області 70px зсув виходив у сім разів
    більшим за потрібний, і смуга вилітала на сусідні секції. */
+/* ── ВКЛАДКА «ЗРОБЛЕНО» ── */
+.dn-hero { display:grid; grid-template-columns:1.15fr 1fr 1fr; gap:14px; margin-bottom:16px; }
+.dn-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:18px 20px; }
+.dn-card.main { background:linear-gradient(135deg, var(--surface) 0%, var(--surface2) 100%); border-color:rgba(0,229,160,.28); }
+.dn-big { font-size:44px; font-weight:800; line-height:1; letter-spacing:-1.5px; }
+.dn-sub { font-size:11px; color:var(--text2); margin-top:7px; font-weight:600; }
+.dn-note { font-size:10.5px; color:var(--text3); margin-top:11px; line-height:1.5; }
+.dn-split { display:flex; gap:22px; margin-top:14px; padding-top:13px; border-top:1px solid var(--border); }
+.dn-sv { font-size:19px; font-weight:800; }
+.dn-sl { font-size:10px; color:var(--text3); font-weight:600; margin-top:2px; }
+.dn-streak { display:flex; align-items:baseline; gap:7px; }
+.dn-days { display:flex; gap:3px; margin-top:12px; }
+.dn-day { flex:1; height:26px; border-radius:4px; background:var(--surface3); position:relative; }
+.dn-day.on { background:var(--accent); }
+.dn-day.today { outline:2px solid var(--accent2); outline-offset:1px; }
+.dn-daylab { font-size:8.5px; color:var(--text3); text-align:center; margin-top:4px; font-weight:600; }
+.dn-sect { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px 18px; margin-bottom:14px; }
+.dn-h { font-size:11px; font-weight:700; letter-spacing:.7px; text-transform:uppercase; color:var(--text2); margin-bottom:13px; }
+.dn-item { display:flex; align-items:center; gap:11px; padding:9px 0; border-bottom:1px solid var(--border); }
+.dn-item:last-child { border-bottom:none; }
+.dn-tick { width:17px; height:17px; border-radius:5px; background:var(--accent); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.dn-nm { flex:1; font-size:12.5px; font-weight:600; line-height:1.4; }
+.dn-tm { font-size:10.5px; color:var(--text3); font-weight:600; white-space:nowrap; }
+.dn-who { display:flex; gap:12px; flex-wrap:wrap; }
+.dn-wcard { flex:1; min-width:150px; background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:13px 15px; }
+.dn-wtop { display:flex; align-items:center; gap:9px; margin-bottom:9px; }
+.dn-wn { font-size:19px; font-weight:800; }
+.dn-bar { height:3px; border-radius:2px; background:var(--accent3); opacity:.5; margin-top:6px; }
+.dn-empty { text-align:center; padding:26px 16px; color:var(--text3); font-size:12px; line-height:1.7; }
+
 /* ── ПОШУК ПО ЗАДАЧАХ ── */
 .srch { position:relative; margin-bottom:14px; }
 .srch-inp { width:100%; background:var(--surface); border:1px solid var(--border); border-radius:9px;
@@ -605,6 +635,10 @@ body.personal .timerbar, .timerbar { left:222px; }
     <a class="nav-item" onclick="switchView('month',this)">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="2"/><path d="M5 2v12M11 2v12M2 8h12"/></svg>
       Місяць
+    </a>
+    <a class="nav-item" onclick="switchView('done',this)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 4.5L6.5 11.5 3 8"/></svg>
+      Зроблено
     </a>
     <a class="nav-item" onclick="switchView('board',this)">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1.5" y="2.5" width="3.6" height="11" rx="1"/><rect x="6.2" y="2.5" width="3.6" height="8" rx="1"/><rect x="10.9" y="2.5" width="3.6" height="5" rx="1"/></svg>
@@ -895,6 +929,22 @@ body.personal .timerbar, .timerbar { left:222px; }
 
 <!-- ══ TEAM ══ -->
 <!-- ══ BOARD ══ -->
+<div class="view" id="view-done">
+  <div class="board-top">
+    <div>
+      <div class="board-title">Зроблено</div>
+      <div class="board-sub" id="dn-sub">—</div>
+    </div>
+    <div class="board-tools">
+      <div class="bd-toggle">
+        <button class="bd-tbtn on" onclick="setDoneScope('me',this)">Я</button>
+        <button class="bd-tbtn" onclick="setDoneScope('team',this)">Команда</button>
+      </div>
+    </div>
+  </div>
+  <div style="padding:20px 28px" id="dn-body"></div>
+</div>
+
 <div class="view" id="view-board">
   <div class="banner load hidden" id="banner-board"><span class="dot-pulse"></span><span>Завантаження…</span></div>
   <div class="board-top">
@@ -1051,7 +1101,7 @@ body.personal .timerbar, .timerbar { left:222px; }
 // Apps Script: getTasks (тільки мої задачі з ClickUp), logTask, closeTask, місячна аналітика
 // Штамп збірки. Якщо в консолі не видно саме цього рядка — у браузері
 // лежить старий файл, і шукати проблему в логіці марно.
-const BUILD = 'v2.8 · task-search';
+const BUILD = 'v3.0 · time-today';
 console.log('%cDABUDAI Tracker ' + BUILD, 'color:#00E5A0;font-weight:bold');
 
 const GS_URL = 'https://script.google.com/macros/s/AKfycbzScxFH5InOW__W-je2mVUMLMBhMTS5dFQWFfrhfGTLTehTClkAFGi-VcpF8SwAMhJZ/exec';const N8N = {
@@ -2378,14 +2428,31 @@ function weeklyBreakdown(list, from, to){
 // FACT.byTask — { taskId: мілісекунди }, записи часу рівно за обраний період.
 // Прив'язка до людини йде через ВИКОНАВЦЯ задачі, а не через автора запису:
 // токен спільний, тож автором усіх записів числиться його власник.
-let FACT = { byTask:{}, totalMs:0, entries:0, loaded:false };
+let FACT = { byTask:{}, byDay:{}, totalMs:0, entries:0, loaded:false };
+
+// Тягне записи часу за довільний період і ПОВЕРТАЄ їх, не чіпаючи
+// глобальний FACT. Потрібно там, де в одному екрані співіснують два
+// різні періоди — наприклад, місячна розкладка по днях і водночас
+// перелік задач саме за сьогодні.
+async function fetchFact(from, to){
+  if (USE_MOCK) return { byTask:{}, byDay:{}, totalMs:0, entries:0, loaded:true };
+  try {
+    const d = await api(GS_URL + '?action=getTimeEntries&from=' + from + '&to=' + to);
+    return { byTask:(d && d.byTask) || {}, byDay:(d && d.byDay) || {},
+             totalMs:(d && d.totalMs) || 0, entries:(d && d.entries) || 0, loaded:true };
+  } catch(e){
+    console.error('[FACT] запит провалився:', e.message);
+    return { byTask:{}, byDay:{}, totalMs:0, entries:0, loaded:false };
+  }
+}
 
 async function loadFact(from, to){
-  if (USE_MOCK) { FACT = { byTask:{}, totalMs:0, entries:0, loaded:true }; return; }
+  if (USE_MOCK) { FACT = { byTask:{}, byDay:{}, totalMs:0, entries:0, loaded:true }; return; }
   const url = GS_URL + '?action=getTimeEntries&from=' + from + '&to=' + to;
   try {
     const d = await api(url);
-    FACT = { byTask:(d && d.byTask) || {}, totalMs:(d && d.totalMs) || 0,
+    FACT = { byTask:(d && d.byTask) || {}, byDay:(d && d.byDay) || {},
+             totalMs:(d && d.totalMs) || 0,
              entries:(d && d.entries) || 0, loaded:true };
     console.log('[FACT]', FACT.entries, 'записів,',
                 Object.keys(FACT.byTask).length, 'задач,',
@@ -2393,7 +2460,7 @@ async function loadFact(from, to){
   } catch(e){
     // Раніше помилка тут гинула мовчки, і в таблиці просто стояли прочерки —
     // не відрізнити «нічого не натрековано» від «запит не дійшов».
-    FACT = { byTask:{}, totalMs:0, entries:0, loaded:false };
+    FACT = { byTask:{}, byDay:{}, totalMs:0, entries:0, loaded:false };
     console.error('[FACT] запит провалився:', e.message, url);
     toast('⚠️','Факт не завантажився: ' + e.message);
   }
@@ -2875,6 +2942,237 @@ function toggleTheme(){
   applyTheme(next);
 }
 
+/* ══ ВКЛАДКА «ЗРОБЛЕНО» ═════════════════════════════════════
+   Питання цієї вкладки — «що я СЬОГОДНІ доробив», тож задача
+   прив'язується до дати ЗАКРИТТЯ (closedMs), а не до дедлайну, як у
+   решті аналітики. Задача з дедлайном 10 серпня, закрита сьогодні,
+   зроблена саме сьогодні.
+
+   Про смугу днів: вона показує, у які дні була закрита хоч одна задача.
+   Свідомо без «ти зірвав серію» і без червоного на пропусках — порожній
+   день буває через вихідний, відпустку чи довгу задачу, що йде третій
+   день. Мета — показати накопичений результат, а не карати за паузу.
+   ═══════════════════════════════════════════════════════════ */
+let DONE_SCOPE = localStorage.getItem('dabudai_dscope') || 'me';
+
+function dayKey(ms){
+  const d = new Date(ms);
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function startOfDay(d){ const x = new Date(d); x.setHours(0,0,0,0); return x.getTime(); }
+
+function setDoneScope(v, el){
+  DONE_SCOPE = v;
+  localStorage.setItem('dabudai_dscope', v);
+  document.querySelectorAll('#view-done .bd-tbtn').forEach(b=>b.classList.remove('on'));
+  if (el) el.classList.add('on');
+  buildDone();
+}
+
+// Задачі, закриті в межах [from, to]
+function closedBetween(from, to){
+  const mine = DONE_SCOPE === 'me' ? (PERSONAL || TEAM[0].id) : null;
+  return ALL_TASKS.filter(t => {
+    if (t.contextOnly) return false;
+    if (t.status !== 'closed') return false;
+    if (!t.closedMs) return false;
+    if (mine && t.assigneeId !== mine) return false;
+    return t.closedMs >= from && t.closedMs <= to;
+  }).sort((a,b) => b.closedMs - a.closedMs);
+}
+
+async function buildDone(){
+  const now   = Date.now();
+  const dayA  = startOfDay(now), dayB = dayA + 86400000 - 1;
+  const weekA = startOfDay(now - 6*86400000);
+  const monA  = new Date(); monA.setDate(1); monA.setHours(0,0,0,0);
+
+  // Два зрізи: місячний — для підсумків і смуги днів; денний — для переліку
+  // задач, на які час ішов саме сьогодні.
+  await loadFact(monA.getTime(), now);
+  const FT = await fetchFact(dayA, dayB);
+
+  const today = closedBetween(dayA, dayB);
+  const week  = closedBetween(weekA, now);
+  const month = closedBetween(monA.getTime(), now);
+
+  const factToday = FT.totalMs || 0;
+  const factWeek  = sumDays(weekA, now);
+  const factMonth = FACT.totalMs || 0;
+
+  // смуга останніх 14 днів + поточна серія
+  const days = [];
+  for (let i = 13; i >= 0; i--){
+    const a = startOfDay(now - i*86400000), b = a + 86400000 - 1;
+    days.push({ a, n: closedBetween(a,b).length, today: i === 0 });
+  }
+  let streak = 0;
+  for (let i = days.length - 1; i >= 0; i--){
+    if (days[i].n > 0) streak++;
+    else if (!days[i].today) break;   // сьогоднішній нуль серію ще не рве
+  }
+
+  const who = DONE_SCOPE === 'me' ? 'мої задачі' : 'вся команда';
+  document.getElementById('dn-sub').textContent =
+    new Date().toLocaleDateString('uk-UA',{weekday:'long', day:'numeric', month:'long'}) + ' · ' + who;
+
+  document.getElementById('dn-body').innerHTML =
+      heroHTML(today, factToday, week, factWeek, month, factMonth, days, streak)
+    + timeTodayHTML(FT, today)
+    + todayListHTML(today, FT)
+    + (DONE_SCOPE === 'team' ? teamTodayHTML(dayA, dayB) : '')
+    + recentHTML(week, dayA);
+}
+
+function sumDays(from, to){
+  if (!FACT.byDay) return 0;
+  let ms = 0;
+  Object.keys(FACT.byDay).forEach(k => {
+    const [y,m,d] = k.split('-').map(Number);
+    const t = new Date(y, m-1, d).getTime();
+    if (t >= startOfDay(from) && t <= to) ms += FACT.byDay[k];
+  });
+  return ms;
+}
+
+const hLabel = (ms) => ms > 0 ? (Math.round(ms/360000)/10) + 'г' : '—';
+
+function heroHTML(today, fToday, week, fWeek, month, fMonth, days, streak){
+  const dayNames = ['Нд','Пн','Вт','Ср','Чт','Пт','Сб'];
+  return `
+  <div class="dn-hero">
+    <div class="dn-card main">
+      <div class="dn-big" style="color:var(--accent)">${today.length}</div>
+      <div class="dn-sub">${today.length ? 'задач закрито сьогодні' : 'поки нічого не закрито сьогодні'}</div>
+      <div class="dn-split">
+        <div><div class="dn-sv" style="color:var(--accent3)">${hLabel(fToday)}</div><div class="dn-sl">натрековано</div></div>
+        <div><div class="dn-sv">${streak}</div><div class="dn-sl">${streak === 1 ? 'день поспіль' : 'днів поспіль'}</div></div>
+      </div>
+      ${today.length ? '' : '<div class="dn-note">День ще не закінчився. І довга задача, над якою йде робота третій день, теж рахується — просто вона закриється пізніше.</div>'}
+    </div>
+
+    <div class="dn-card">
+      <div class="dn-big" style="color:var(--accent2)">${week.length}</div>
+      <div class="dn-sub">за останні 7 днів</div>
+      <div class="dn-split"><div><div class="dn-sv" style="color:var(--accent3)">${hLabel(fWeek)}</div><div class="dn-sl">натрековано</div></div></div>
+    </div>
+
+    <div class="dn-card">
+      <div class="dn-big">${month.length}</div>
+      <div class="dn-sub">з початку місяця</div>
+      <div class="dn-split"><div><div class="dn-sv" style="color:var(--accent3)">${hLabel(fMonth)}</div><div class="dn-sl">натрековано</div></div></div>
+    </div>
+  </div>
+
+  <div class="dn-sect">
+    <div class="dn-h">Останні 14 днів</div>
+    <div class="dn-days">
+      ${days.map(d => `<div style="flex:1" title="${new Date(d.a).toLocaleDateString('uk-UA')} — ${d.n} задач">
+        <div class="dn-day ${d.n?'on':''} ${d.today?'today':''}"
+             style="${d.n?`opacity:${Math.min(1, .45 + d.n*0.14)}`:''}"></div>
+        <div class="dn-daylab">${dayNames[new Date(d.a).getDay()]}</div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+// Усі задачі, на які СЬОГОДНІ йшов час — закриті й ні.
+// Робота, що триває, має бути видимою: три години на складній задачі —
+// це результат дня, навіть якщо галочки ще нема.
+function timeTodayHTML(FT, closedToday){
+  const closedIds = new Set(closedToday.map(t => t.id));
+  const mine = DONE_SCOPE === 'me' ? (PERSONAL || TEAM[0].id) : null;
+
+  const rows = Object.keys(FT.byTask || {}).map(tid => {
+    const t = taskById(tid);
+    return { tid, t, ms: FT.byTask[tid], name: t ? t.name : 'Задача поза набором (' + tid + ')' };
+  }).filter(r => {
+    if (r.ms < 60000) return false;             // менше хвилини — шум від випадкових кліків
+    if (mine && r.t && r.t.assigneeId !== mine) return false;
+    return true;
+  }).sort((a,b) => b.ms - a.ms);
+
+  const total = rows.reduce((s,r) => s + r.ms, 0);
+  if (!rows.length) {
+    return `<div class="dn-sect">
+      <div class="dn-h">Час сьогодні</div>
+      <div class="dn-empty">Сьогодні таймер не запускався.<br>Час рахується лише з трекера — те, що зроблено без нього, сюди не потрапить.</div>
+    </div>`;
+  }
+
+  const max = rows[0].ms;
+  return `<div class="dn-sect">
+    <div class="dn-h">Час сьогодні · ${hLabel(total)} на ${rows.length} ${rows.length===1?'задачі':'задачах'}</div>
+    ${rows.map(r => {
+      const done = closedIds.has(r.tid);
+      const open = r.t && r.t.status !== 'closed';
+      return `<div class="dn-item">
+        <div class="dn-tick" style="background:${done?'var(--accent)':'var(--surface3)'}">
+          ${done
+            ? '<svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="var(--bg)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.2l2.4 2.4L9.5 4"/></svg>'
+            : '<svg width="9" height="9" viewBox="0 0 12 12" fill="none" stroke="var(--accent3)" stroke-width="2"><circle cx="6" cy="6" r="4"/><path d="M6 3.6V6l1.6 1.1" stroke-linecap="round"/></svg>'}
+        </div>
+        <div style="flex:1;min-width:0">
+          <div class="dn-nm">${esc(r.name)}</div>
+          <div class="dn-bar" style="width:${Math.max(3, Math.round(r.ms/max*100))}%"></div>
+        </div>
+        <div class="dn-tm" style="color:${done?'var(--accent)':'var(--accent3)'}">${hLabel(r.ms)}${open?' · в роботі':''}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+function todayListHTML(today, FT){
+  return `<div class="dn-sect">
+    <div class="dn-h">Закрито сьогодні · ${today.length}</div>
+    ${today.length ? today.map(t => {
+      // сьогоднішня частка, а не сума за весь час життя задачі
+      const ms = (FT && FT.byTask && FT.byTask[t.id]) || 0;
+      return `<div class="dn-item">
+        <div class="dn-tick"><svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="var(--bg)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.2l2.4 2.4L9.5 4"/></svg></div>
+        <div class="dn-nm">${esc(t.name)}</div>
+        <div class="dn-tm">${ms ? hLabel(ms) : ''}${ms ? ' · ' : ''}${new Date(t.closedMs).toLocaleTimeString('uk-UA',{hour:'2-digit',minute:'2-digit'})}</div>
+      </div>`;
+    }).join('') : '<div class="dn-empty">Сьогодні ще нічого не закрито.<br>Це нормально — не кожен день закінчується галочкою.</div>'}
+  </div>`;
+}
+
+function teamTodayHTML(dayA, dayB){
+  const rows = TEAM.map(m => {
+    const n = ALL_TASKS.filter(t => !t.contextOnly && t.status==='closed' && t.closedMs
+              && t.closedMs>=dayA && t.closedMs<=dayB && t.assigneeId===m.id).length;
+    return { m, n };
+  });
+  const total = rows.reduce((s,r)=>s+r.n,0);
+  return `<div class="dn-sect">
+    <div class="dn-h">Сьогодні по людях · разом ${total}</div>
+    <div class="dn-who">
+      ${rows.map(r => `<div class="dn-wcard">
+        <div class="dn-wtop">
+          <div class="tt-av" style="background:${r.m.color}">${r.m.short}</div>
+          <div style="font-size:11.5px;font-weight:700">${r.m.name}</div>
+        </div>
+        <div class="dn-wn" style="color:${r.n?r.m.color:'var(--text3)'}">${r.n}</div>
+        <div class="dn-sl">${r.n===1?'задача':'задач'} закрито</div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function recentHTML(week, dayA){
+  const earlier = week.filter(t => t.closedMs < dayA);
+  if (!earlier.length) return '';
+  return `<div class="dn-sect">
+    <div class="dn-h">Раніше цього тижня · ${earlier.length}</div>
+    ${earlier.slice(0,25).map(t => `<div class="dn-item">
+      <div class="dn-tick" style="background:var(--surface3)"><svg width="10" height="10" viewBox="0 0 12 12" fill="none" stroke="var(--text3)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.2l2.4 2.4L9.5 4"/></svg></div>
+      <div class="dn-nm" style="color:var(--text2)">${esc(t.name)}</div>
+      <div class="dn-tm">${new Date(t.closedMs).toLocaleDateString('uk-UA',{day:'numeric',month:'short'})}</div>
+    </div>`).join('')}
+    ${earlier.length>25 ? `<div class="dn-empty" style="padding:12px">…і ще ${earlier.length-25}</div>` : ''}
+  </div>`;
+}
+
 /* ══ ПОШУК ПО ЗАДАЧАХ ═══════════════════════════════════════
    Шукає по ВСЬОМУ набору, а не лише по тому, що видно на «Сьогодні»:
    задача, яку намагаєшся згадати, найчастіше саме та, якої на
@@ -3301,6 +3599,7 @@ async function switchView(v,el){
   document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
   if(el)el.classList.add('active');
+  if(v==='done')  await buildDone();
   if(v==='board') await buildBoard();
   if(v==='week')  buildWeek();
   if(v==='month') await buildMonth();
